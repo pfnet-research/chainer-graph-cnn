@@ -25,9 +25,6 @@ def main():
     parser.add_argument('--val_freq', type=int, default=1, help='Validation frequency')
     parser.add_argument('--snapshot_freq', type=int, default=1, help='Snapshot frequency')
     parser.add_argument('--log_freq', type=int, default=1, help='Log frequency')
-    parser.add_argument('--val_freq_unit', choices=['epoch', 'iteration'], default='epoch')
-    parser.add_argument('--snapshot_freq_unit', choices=['epoch', 'iteration'], default='epoch')
-    parser.add_argument('--log_freq_unit', choices=['epoch', 'iteration'], default='epoch')
     args = parser.parse_args()
 
     with open(args.config) as f:
@@ -57,11 +54,11 @@ def main():
     # Extentions
     trainer.extend(
         extensions.Evaluator(val_iter, model, device=devices['main']),
-        trigger=(args.val_freq, args.val_freq_unit))
+        trigger=(args.val_freq, 'epoch'))
     trainer.extend(
-        extensions.snapshot(trigger=(args.snapshot_freq, args.snapshot_freq_unit)))
+        extensions.snapshot(trigger=(args.snapshot_freq, 'epoch')))
     trainer.extend(
-        extensions.LogReport(trigger=(args.log_freq, args.log_freq_unit)))
+        extensions.LogReport(trigger=(args.log_freq, 'epoch')))
     trainer.extend(extensions.PrintReport([
         'epoch', 'iteration',
         'main/loss', 'main/accuracy',

@@ -1,20 +1,15 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-# Adapted from https://github.com/mdeff/cnn_graph/blob/master/lib/graph.py
 
 import scipy.sparse as ss
 import numpy as np
 import scipy.spatial.distance
 import sklearn.metrics.pairwise
 
-def create_laplacian(W, normalize=True):
+def create_laplacian(W, normalize=True, no_diag=False):
   n = W.shape[0]
   W = ss.csr_matrix(W)
-  D = ss.lil_matrix((n,n))
   WW_diag = W.dot(ss.csr_matrix(np.ones((n,1)))).todense()
-  D.setdiag(WW_diag)
-  D = ss.csr_matrix(D)
-  L = D-W
   if normalize:
     WWds = np.sqrt(WW_diag)
     WWds[WWds == 0] = np.float("inf") # Let the inverse of zero entries become zero.
@@ -22,12 +17,26 @@ def create_laplacian(W, normalize=True):
     D_invroot = ss.lil_matrix((n,n))
     D_invroot.setdiag(WW_diag_invroot)
     D_invroot = ss.csr_matrix(D_invroot)
-    L = D_invroot.dot(L.dot(D_invroot))
+    L = D_invroot.dot(W.dot(D_invroot))
+    if no_diag:
+        L = -L
+    else:
+        I = scipy.sparse.identity(L.shape[0], format='csr', dtype=L.dtype)
+        L = I - L
+  else:
+    D = ss.lil_matrix((n,n))
+    D.setdiag(WW_diag)
+    D = ss.csr_matrix(D)
+    if no_diag:
+        L = -W
+    else:
+        L = D - W
 
   return L
 
 def grid(m, dtype=np.float32):
     """Return the embedding of a grid graph."""
+    # Adapted from https://github.com/mdeff/cnn_graph/blob/master/lib/graph.py
     M = m**2
     x = np.linspace(0, 1, m, dtype=dtype)
     y = np.linspace(0, 1, m, dtype=dtype)
@@ -39,6 +48,7 @@ def grid(m, dtype=np.float32):
 
 def distance_sklearn_metrics(z, k=4, metric='euclidean'):
     """Compute exact pairwise distances."""
+    # Adapted from https://github.com/mdeff/cnn_graph/blob/master/lib/graph.py
     d = sklearn.metrics.pairwise.pairwise_distances(
             z, metric=metric, n_jobs=-2)
     # k-NN graph.
@@ -49,6 +59,7 @@ def distance_sklearn_metrics(z, k=4, metric='euclidean'):
 
 def adjacency(dist, idx):
     """Return the adjacency matrix of a kNN graph."""
+    # Adapted from https://github.com/mdeff/cnn_graph/blob/master/lib/graph.py
     M, k = dist.shape
     assert M, k == idx.shape
     assert dist.min() >= 0
@@ -76,6 +87,7 @@ def adjacency(dist, idx):
     return W
 
 def grid_graph(m):
+    # Adapted from https://github.com/mdeff/cnn_graph/blob/master/lib/graph.py
     z = grid(m)
     dist, idx = distance_sklearn_metrics(z, k=8)
     A = adjacency(dist, idx)

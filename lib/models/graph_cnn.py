@@ -21,22 +21,26 @@ class GraphCNN(chainer.Chain):
         graphs, pooling_inds = coarsening.coarsen(A, levels=coarsening_levels)
         self.pooling_inds = pooling_inds
         layers = {
+                'gconv0': GraphConvolution(1, 32, graphs[0], K=25),
+                'gconv1': GraphConvolution(32, 64, graphs[1], K=25),
+                'gconv2': GraphConvolution(64, 128, graphs[2], K=25),
                 'fc0': L.Linear(None, 1000),
                 'fc1': L.Linear(None, 1000),
                 'fc2': L.Linear(None, n_out),
                 }
-        for i, graph in enumerate(graphs):
-            layers['gconv{}'.format(i)] = GraphConvolution(None, 32 * 2**i, graph, K=25)
-        super(GraphCNN, self).__init__(layers)
+        super(GraphCNN, self).__init__(**layers)
 
     def __call__(self, x, *args):
         # x.shape = (n_batch, n_channels, h*w)
 
         h = x
         # Graph convolutional layers
-        for i, pooling_ind in enumerate(self.pooling_inds):
-            h = F.relu(self['gconv{}'.format(i)](h))
-            h = graph_max_pooling(h, self.pooling_ind)
+        h = F.relu(self.gconv0(h))
+        h = graph_max_pooling(h, self.pooling_inds[0])
+        h = F.relu(self.gconv1(h))
+        h = graph_max_pooling(h, self.pooling_inds[1])
+        h = F.relu(self.gconv2(h))
+        h = graph_max_pooling(h, self.pooling_inds[2])
 
         n_batch = h.shape[0]
         h = F.reshape(h, (n_batch, -1,))
