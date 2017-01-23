@@ -1,0 +1,6 @@
+{
+  "batch_size": 100,
+  "optimizer": {
+    "weight_decay": 1e-7
+  }
+}
