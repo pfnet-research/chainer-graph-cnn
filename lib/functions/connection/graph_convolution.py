@@ -97,7 +97,10 @@ class GraphConvolutionFunction(function.Function):
         b = inputs[2] if len(inputs) == 3 else None
 
         K = self.K
-        LmI = scipy.sparse.csr_matrix(self.LmI_tuple, self.LmI_shape)
+        LmI_data, LmI_indices, LmI_indptr = self.LmI_tuple
+        if x.dtype != LmI_data.dtype:
+            LmI_data = LmI_data.astype(x.dtype)
+        LmI = scipy.sparse.csr_matrix((LmI_data, LmI_indices, LmI_indptr), self.LmI_shape)
 
         C = np.empty((n_batch, K, N, c_in), dtype=x.dtype)
         chebyshev_matvec_cpu(C, x, K, n_batch, LmI)
@@ -126,8 +129,26 @@ class GraphConvolutionFunction(function.Function):
         K = self.K
         LmI_data, LmI_indices, LmI_indptr = self.LmI_tuple
 
+        if x.dtype != LmI_data.dtype:
+            LmI_data = LmI_data.astype(x.dtype)
+        #if x.dtype != LmI_data.dtype:
+        #    x = x.astype(LmI_data.dtype)
+        #if W.dtype != LmI_data.dtype:
+        #    W = W.astype(LmI_data.dtype)
+        #if b is not None and b.dtype != LmI_data.dtype:
+        #    b = b.astype(LmI_data.dtype)
+
         C = xp.empty((K, N, c_in, n_batch), dtype=x.dtype)
+        #print("forward_gpu")
+        #print("x",x.dtype)
+        #print("W",W.dtype)
+        #print("b",b.dtype if b else "")
+        #print("C",C.dtype)
+        #print("LmI_data",LmI_data.dtype)
+        #print("LmI_indices",LmI_indices.dtype)
+        #print("LmI_indptr",LmI_indptr.dtype)
         chebyshev_matvec_gpu(C, x, K, n_batch, LmI_data, LmI_indices, LmI_indptr)
+        #print("- forward_gpu - end")
 
         # C.shape = (K, N, c_in, n_batch)
         C = C.transpose((3,2,0,1))
@@ -158,7 +179,10 @@ class GraphConvolutionFunction(function.Function):
         # y0.shape = (n_batch, N, c_out)
 
         K = self.K
-        LmI = scipy.sparse.csr_matrix(self.LmI_tuple, self.LmI_shape)
+        LmI_data, LmI_indices, LmI_indptr = self.LmI_tuple
+        if x.dtype != LmI_data.dtype:
+            LmI_data = LmI_data.astype(x.dtype)
+        LmI = scipy.sparse.csr_matrix((LmI_data, LmI_indices, LmI_indptr), self.LmI_shape)
 
         C = np.empty((n_batch, K, N, c_out), dtype=x.dtype)
         chebyshev_matvec_cpu(C, gy, K, n_batch, LmI)
@@ -199,8 +223,22 @@ class GraphConvolutionFunction(function.Function):
         K = self.K
         LmI_data, LmI_indices, LmI_indptr = self.LmI_tuple
 
+        if x.dtype != LmI_data.dtype:
+            LmI_data = LmI_data.astype(x.dtype)
+
         C = xp.empty((K, N, c_out, n_batch), dtype=x.dtype)
+        #print("backward_gpu")
+        #print("x",x.dtype)
+        #print("W",W.dtype)
+        #print("b",b.dtype if b else "")
+        #print("gy",gy.dtype)
+        #print("gW",gW.dtype)
+        #print("C",C.dtype)
+        #print("LmI_data",LmI_data.dtype)
+        #print("LmI_indices",LmI_indices.dtype)
+        #print("LmI_indptr",LmI_indptr.dtype)
         chebyshev_matvec_gpu(C, gy, K, n_batch, LmI_data, LmI_indices, LmI_indptr)
+        #print("- backward_gpu - end")
 
         # C.shape = (K, N, c_out, n_batch)
         C = C.transpose((3,2,0,1))

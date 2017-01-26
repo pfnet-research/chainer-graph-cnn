@@ -32,7 +32,7 @@ def create_laplacian(W, normalize=True, no_diag=False):
     else:
         L = D - W
 
-  return L
+  return L.astype(W.dtype)
 
 def grid(m, dtype=np.float32):
     """Return the embedding of a grid graph."""
