@@ -55,9 +55,6 @@ class GraphMaxPoolingFunction(function.Function):
     def __init__(self, pooling_inds):
         self.pooling_inds = np.array(pooling_inds).astype(np.int32)
 
-    def check_type_forward(self, in_types):
-        pass
-
     def forward_cpu(self, inputs):
         x = inputs[0]
         n_batch, c, N = x.shape
@@ -82,10 +79,11 @@ class GraphMaxPoolingFunction(function.Function):
         # x.shape = (n_batch, c, N)
         x = x.transpose((2, 1, 0))
         # x.shape = (N, c, n_batch)
-        y = xp.empty((N_coarse, c, n_batch), dtype=x.dtype)
-        self.max_inds = xp.empty((N_coarse, c, n_batch), dtype=np.int32)
-        pooling_inds = cuda.to_gpu(self.pooling_inds)
-        gpu_graphpool_fwd(N_coarse, pooling_inds, x, y, self.max_inds)
+        with cuda.get_device(x.data):
+            y = xp.empty((N_coarse, c, n_batch), dtype=x.dtype)
+            self.max_inds = xp.empty((N_coarse, c, n_batch), dtype=np.int32)
+            pooling_inds = cuda.to_gpu(self.pooling_inds)
+            gpu_graphpool_fwd(N_coarse, pooling_inds, x, y, self.max_inds)
         y = y.transpose((2, 1, 0))
         # y.shape = (n_batch, c, N_coarse)
 
@@ -114,8 +112,9 @@ class GraphMaxPoolingFunction(function.Function):
         N_coarse = gy.shape[2]
         gy = gy.transpose((2, 1, 0))
         # gy.shape = (n_batch, c_in, N_coarse)
-        gx = xp.zeros((N, c_in, n_batch), dtype=x.dtype)
-        gpu_graphpool_bwd(N, N_coarse, self.max_inds, gy, gx)
+        with cuda.get_device(x.data):
+            gx = xp.zeros((N, c_in, n_batch), dtype=x.dtype)
+            gpu_graphpool_bwd(N, N_coarse, self.max_inds, gy, gx)
         gx = gx.transpose((2, 1, 0))
         # gx.shape = (n_batch, c_in, N)
         return gx,

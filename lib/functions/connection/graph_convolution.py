@@ -8,6 +8,7 @@ import chainer
 from chainer import cuda
 from chainer import function
 from chainer.cuda import cupy
+from chainer.utils import type_check
 
 
 def chebyshev_matvec_cpu(C, x, K, n_batch, LmI):
@@ -80,7 +81,26 @@ class GraphConvolutionFunction(function.Function):
         self.K = K
 
     def check_type_forward(self, in_types):
-        pass
+        n_in = in_types.size()
+        type_check.expect(2 <= n_in, n_in <= 3)
+
+        x_type = in_types[0]
+        w_type = in_types[1]
+        type_check.expect(
+            x_type.dtype.kind == 'f',
+            w_type.dtype.kind == 'f',
+            x_type.ndim == 3,
+            w_type.ndim == 3,
+            x_type.shape[1] == w_type.shape[1],
+        )
+
+        if n_in.eval() == 3:
+            b_type = in_types[2]
+            type_check.expect(
+                b_type.dtype == x_type.dtype,
+                b_type.ndim == 1,
+                b_type.shape[0] == w_type.shape[0],
+            )
 
     def forward_cpu(self, inputs):
         x, W = inputs[:2]
@@ -118,30 +138,30 @@ class GraphConvolutionFunction(function.Function):
         n_batch, c_in, N = x.shape
         b = inputs[2] if len(inputs) == 3 else None
         xp = cuda.get_array_module(x)
+        with cuda.get_device(x.data):
+            K = self.K
+            LmI_data, LmI_indices, LmI_indptr = map(cuda.to_gpu, self.LmI_tuple)
 
-        K = self.K
-        LmI_data, LmI_indices, LmI_indptr = map(cuda.to_gpu, self.LmI_tuple)
+            if x.dtype != LmI_data.dtype:
+                LmI_data = LmI_data.astype(x.dtype)
 
-        if x.dtype != LmI_data.dtype:
-            LmI_data = LmI_data.astype(x.dtype)
+            C = xp.empty((K, N, c_in, n_batch), dtype=x.dtype)
+            chebyshev_matvec_gpu(C, x, K, n_batch,
+                                 LmI_data, LmI_indices, LmI_indptr)
 
-        C = xp.empty((K, N, c_in, n_batch), dtype=x.dtype)
-        chebyshev_matvec_gpu(C, x, K, n_batch,
-                             LmI_data, LmI_indices, LmI_indptr)
+            # C.shape = (K, N, c_in, n_batch)
+            C = C.transpose((3, 2, 0, 1))
+            # C.shape = (n_batch, c_in, K, N)
+            self.C = C
+            # W.shape = (c_out, c_in, K)
 
-        # C.shape = (K, N, c_in, n_batch)
-        C = C.transpose((3, 2, 0, 1))
-        # C.shape = (n_batch, c_in, K, N)
-        self.C = C
-        # W.shape = (c_out, c_in, K)
+            y = xp.tensordot(C, W, ((1, 2), (1, 2)))
+            # y.shape = (n_batch, N, c_out)
 
-        y = xp.tensordot(C, W, ((1, 2), (1, 2)))
-        # y.shape = (n_batch, N, c_out)
+            if b is not None:
+                y += b
 
-        if b is not None:
-            y += b
-
-        return xp.rollaxis(y, 2, 1),  # y.shape = (n_batch, c_out, N)
+            return xp.rollaxis(y, 2, 1),  # y.shape = (n_batch, c_out, N)
 
     def backward_cpu(self, inputs, grad_outputs):
         x, W = inputs[:2]
@@ -188,35 +208,35 @@ class GraphConvolutionFunction(function.Function):
         b = inputs[2] if len(inputs) == 3 else None
         gy = grad_outputs[0]
         xp = cuda.get_array_module(x)
+        with cuda.get_device(x.data):
+            n_batch, c_in, N = x.shape
+            c_out = gy.shape[1]
 
-        n_batch, c_in, N = x.shape
-        c_out = gy.shape[1]
+            # gy.shape = (n_batch, c_out, N)
+            # C.shape = (n_batch, c_in, K, N)
+            gW = xp.tensordot(gy, self.C, ((0, 2), (0, 3))).astype(W.dtype, copy=False)
+            # gW.shape = (c_out, c_in, K)
+            # y0.shape = (n_batch, N, c_out)
 
-        # gy.shape = (n_batch, c_out, N)
-        # C.shape = (n_batch, c_in, K, N)
-        gW = xp.tensordot(gy, self.C, ((0, 2), (0, 3))).astype(W.dtype, copy=False)
-        # gW.shape = (c_out, c_in, K)
-        # y0.shape = (n_batch, N, c_out)
+            K = self.K
+            LmI_data, LmI_indices, LmI_indptr = map(cuda.to_gpu, self.LmI_tuple)
 
-        K = self.K
-        LmI_data, LmI_indices, LmI_indptr = map(cuda.to_gpu, self.LmI_tuple)
+            if x.dtype != LmI_data.dtype:
+                LmI_data = LmI_data.astype(x.dtype)
 
-        if x.dtype != LmI_data.dtype:
-            LmI_data = LmI_data.astype(x.dtype)
+            C = xp.empty((K, N, c_out, n_batch), dtype=x.dtype)
+            chebyshev_matvec_gpu(C, gy, K, n_batch,
+                                 LmI_data, LmI_indices, LmI_indptr)
 
-        C = xp.empty((K, N, c_out, n_batch), dtype=x.dtype)
-        chebyshev_matvec_gpu(C, gy, K, n_batch,
-                             LmI_data, LmI_indices, LmI_indptr)
+            # C.shape = (K, N, c_out, n_batch)
+            C = C.transpose((3, 2, 0, 1))
+            # C.shape = (n_batch, c_out, K, N)
+            # W.shape = (c_out, c_in, K)
 
-        # C.shape = (K, N, c_out, n_batch)
-        C = C.transpose((3, 2, 0, 1))
-        # C.shape = (n_batch, c_out, K, N)
-        # W.shape = (c_out, c_in, K)
-
-        gx = xp.tensordot(C, W, ((1, 2), (0, 2)))
-        # gx.shape = (n_batch, N, c_in)
-        gx = xp.rollaxis(gx, 2, 1)
-        # gx.shape = (n_batch, c_in, N)
+            gx = xp.tensordot(C, W, ((1, 2), (0, 2)))
+            # gx.shape = (n_batch, N, c_in)
+            gx = xp.rollaxis(gx, 2, 1)
+            # gx.shape = (n_batch, c_in, N)
 
         if b is None:
             return gx, gW
