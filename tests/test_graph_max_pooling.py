@@ -35,10 +35,10 @@ class TestGraphMaxPooling(unittest.TestCase):
                 ]).astype(self.dtype)
         self.L = graph.create_laplacian(A)
         self.K = 25
-        self.pooling_inds = np.array([[0,1],[2,2],[3,3]])
+        self.pooling_inds = np.array([[0, 1], [2, 2], [3, 3]])
         N_coarse = len(self.pooling_inds)
         self.x = np.arange(n_batch * c_in * N, dtype=self.dtype).reshape((n_batch, c_in, N))
-        self.gy = np.random.randn(n_batch,c_in,N_coarse).astype(self.dtype)
+        self.gy = np.random.randn(n_batch, c_in, N_coarse).astype(self.dtype)
         self.check_backward_options = {'eps': 2.0 ** -8}
 
     def check_forward(self, x_data):
@@ -85,5 +85,4 @@ class TestGraphMaxPooling(unittest.TestCase):
         self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.gy))
 
 
-if __name__ == '__main__':
-    unittest.main()
+testing.run_module(__name__, __file__)

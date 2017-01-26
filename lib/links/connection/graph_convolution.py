@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
-import scipy.sparse
 
 from chainer import link
 from chainer import initializers
@@ -10,6 +9,7 @@ from chainer import cuda
 
 from lib.functions.connection import graph_convolution
 from lib import graph
+
 
 class GraphConvolution(link.Link):
 
@@ -26,15 +26,15 @@ class GraphConvolution(link.Link):
     """
 
     def __init__(self, in_channels, out_channels, A, K, wscale=1, bias=0,
-            nobias=False, initialW=None, initial_bias=None):
+                 nobias=False, initialW=None, initial_bias=None):
         super(GraphConvolution, self).__init__()
 
         LmI = graph.create_laplacian(A, no_diag=True)
         print("GraphConvolution: Created LmI with {} nodes".format(LmI.shape[0]))
 
-        self.LmI_data = cuda.to_gpu(LmI.data)
-        self.LmI_indices = cuda.to_gpu(LmI.indices)
-        self.LmI_indptr = cuda.to_gpu(LmI.indptr)
+        self.LmI_data = LmI.data
+        self.LmI_indices = LmI.indices
+        self.LmI_indptr = LmI.indptr
         self.K = K
         self.out_channels = out_channels
         self.n_verts = LmI.shape[0]
@@ -75,4 +75,3 @@ class GraphConvolution(link.Link):
                 self._initialize_params(x.shape[1])
         return graph_convolution.graph_convolution(
                 x, self.W, self.n_verts, self.LmI_data, self.LmI_indices, self.LmI_indptr, self.K, self.b)
-

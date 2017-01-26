@@ -1,11 +1,9 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import six
 import unittest
 
 import numpy as np
-import scipy.sparse
 
 import chainer
 from chainer import gradient_check
@@ -43,10 +41,10 @@ class TestGraphConvolution(unittest.TestCase):
                 ]).astype(self.x_dtype)
         self.L = graph.create_laplacian(A, no_diag=True)
         self.K = 25
-        self.x = np.random.randn(n_batch,c_in,N).astype(self.x_dtype)
-        self.W = np.random.randn(c_out,c_in,self.K).astype(self.W_dtype)
+        self.x = np.random.randn(n_batch, c_in, N).astype(self.x_dtype)
+        self.W = np.random.randn(c_out, c_in, self.K).astype(self.W_dtype)
         self.b = np.random.randn(c_out,).astype(self.x_dtype)
-        self.gy = np.random.randn(n_batch,c_out,N).astype(self.x_dtype)
+        self.gy = np.random.randn(n_batch, c_out, N).astype(self.x_dtype)
 
         self.check_forward_options = {}
         self.check_backward_options = {'dtype': np.float64}
@@ -58,15 +56,19 @@ class TestGraphConvolution(unittest.TestCase):
     @attr.gpu
     def test_forward_consistency(self, nobias=False):
 
+        n_verts = self.L.shape[0]
         x_cpu = chainer.Variable(self.x)
         W_cpu = chainer.Variable(self.W)
         b_cpu = None if nobias else chainer.Variable(self.b)
-        y_cpu = graph_convolution.graph_convolution(x_cpu, W_cpu, self.L.shape[0], self.L.data, self.L.indices, self.L.indptr, self.K, b_cpu)
+        y_cpu = graph_convolution.graph_convolution(x_cpu, W_cpu, n_verts, self.L.data, self.L.indices, self.L.indptr, self.K, b_cpu)
 
         x_gpu = chainer.Variable(cuda.to_gpu(self.x))
         W_gpu = chainer.Variable(cuda.to_gpu(self.W))
         b_gpu = None if nobias else chainer.Variable(cuda.to_gpu(self.b))
-        y_gpu = graph_convolution.graph_convolution(x_gpu, W_gpu, self.L.shape[0], cuda.to_gpu(self.L.data), cuda.to_gpu(self.L.indices), cuda.to_gpu(self.L.indptr), self.K, b_gpu)
+        L_data_gpu = cuda.to_gpu(self.L.data)
+        L_indices_gpu = cuda.to_gpu(self.L.indices)
+        L_indptr_gpu = cuda.to_gpu(self.L.indptr)
+        y_gpu = graph_convolution.graph_convolution(x_gpu, W_gpu, n_verts, L_data_gpu, L_indices_gpu, L_indptr_gpu, self.K, b_gpu)
 
         testing.assert_allclose(
             y_cpu.data, y_gpu.data.get(), **self.check_forward_options)
@@ -122,5 +124,5 @@ class TestGraphConvolution(unittest.TestCase):
                             None, cuda.to_gpu(self.gy),
                             map(cuda.to_gpu, (self.L.data, self.L.indices, self.L.indptr)))
 
-if __name__ == '__main__':
-    unittest.main()
+
+testing.run_module(__name__, __file__)

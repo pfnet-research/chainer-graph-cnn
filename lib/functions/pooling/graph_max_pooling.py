@@ -18,10 +18,12 @@ if chainer.cuda.available:
             int n_cols = _ind.size() / p;
             int row_idx = i / n_cols;
             int col_idx = i % n_cols;
-            T x0 = x[pooling_inds[row_idx * 2 + 0] * n_cols + col_idx];
-            T x1 = x[pooling_inds[row_idx * 2 + 1] * n_cols + col_idx];
+            int idx0 = pooling_inds[row_idx * 2 + 0];
+            int idx1 = pooling_inds[row_idx * 2 + 1];
+            T x0 = x[idx0 * n_cols + col_idx];
+            T x1 = x[idx1 * n_cols + col_idx];
             y = max(x0, x1);
-            max_ind = x0 > x1 ? pooling_inds[row_idx * 2 + 0] : pooling_inds[row_idx * 2 + 1];
+            max_ind = x0 > x1 ? idx0 : idx1;
             ''',
             'gpu_graphpool_fwd'
             )
@@ -50,9 +52,8 @@ if chainer.cuda.available:
 
 class GraphMaxPoolingFunction(function.Function):
 
-    def __init__(self, pooling_inds, use_cudnn=True):
+    def __init__(self, pooling_inds):
         self.pooling_inds = np.array(pooling_inds).astype(np.int32)
-        self.use_cudnn = use_cudnn
 
     def check_type_forward(self, in_types):
         pass
@@ -67,8 +68,8 @@ class GraphMaxPoolingFunction(function.Function):
         m = self.pooling_inds[np.arange(N_coarse), x_pairs.argmax(axis=3)]
         x_inds = np.arange(x.size).reshape(x.shape)
         self.max_inds = x_inds[
-               np.arange(n_batch)[:,None,None],
-               np.arange(c)[None,:,None],
+               np.arange(n_batch)[:, None, None],
+               np.arange(c)[None, :, None],
                m]
         # max_inds.shape = (n_batch, c, N_coarse)
         return x_pairs.max(axis=3),
@@ -120,5 +121,5 @@ class GraphMaxPoolingFunction(function.Function):
         return gx,
 
 
-def graph_max_pooling(x, pooling_inds, use_cudnn=True):
-    return GraphMaxPoolingFunction(pooling_inds, use_cudnn)(x)
+def graph_max_pooling(x, pooling_inds):
+    return GraphMaxPoolingFunction(pooling_inds)(x)

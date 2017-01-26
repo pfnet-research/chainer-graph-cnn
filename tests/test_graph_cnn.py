@@ -3,30 +3,29 @@
 
 import tempfile
 
-import six
 import unittest
 
 import numpy as np
-import scipy.sparse
 
 import chainer
 from chainer import optimizers
 from chainer.training import extensions
 from chainer.training.updater import ParallelUpdater
+from chainer import testing
 
-from lib.datasets import mnist
 from lib.models import graph_cnn
 
 from sklearn.datasets import make_classification
+
 
 class EasyDataset(chainer.dataset.DatasetMixin):
     def __init__(self, train, with_gt=True, n_classes=2):
 
         X, y = make_classification(n_samples=1000, n_features=4, n_classes=n_classes)
-        self.X = X[:,None,:].astype(np.float32)
+        self.X = X[:, None, :].astype(np.float32)
         self.y = y.astype(np.int32)
-        print("X:",self.X.shape)
-        print("y:",self.y.shape)
+        print("X:", self.X.shape)
+        print("y:", self.y.shape)
 
         self.with_gt = with_gt
 
@@ -39,6 +38,7 @@ class EasyDataset(chainer.dataset.DatasetMixin):
             return x
         label = self.y[i]
         return x, label
+
 
 class TestGraphCNN(unittest.TestCase):
 
@@ -69,5 +69,5 @@ class TestGraphCNN(unittest.TestCase):
         trainer.extend(extensions.ProgressBar())
         trainer.run()
 
-if __name__ == '__main__':
-    unittest.main()
+
+testing.run_module(__name__, __file__)
