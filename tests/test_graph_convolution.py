@@ -23,10 +23,11 @@ from lib import graph
     'x_dtype': [np.float32],
     'W_dtype': [np.float32],
 }) + testing.product({
-    'c_contiguous': [False],
-    'x_dtype': [np.float32],
-    'W_dtype': [np.float32],
-})))
+    'c_contiguous': [True, False],
+    'x_dtype': [np.float64],
+    'W_dtype': [np.float64],
+})
+))
 class TestGraphConvolution(unittest.TestCase):
 
     def setUp(self):
