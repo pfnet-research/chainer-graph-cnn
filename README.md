@@ -5,3 +5,10 @@ Published in NIPS 2016.
 
 Based on
 https://github.com/mdeff/cnn_graph
+
+Usage
+-----
+```
+# Trains a GraphCNN on MNIST
+$ python tools/train.py -c configs/default.json -o results -e 100 -g 0
+```

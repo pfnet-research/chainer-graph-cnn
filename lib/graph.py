@@ -6,33 +6,35 @@ import numpy as np
 import scipy.spatial.distance
 import sklearn.metrics.pairwise
 
-def create_laplacian(W, normalize=True, minus_identity=False):
-  n = W.shape[0]
-  W = ss.csr_matrix(W)
-  WW_diag = W.dot(ss.csr_matrix(np.ones((n,1)))).todense()
-  if normalize:
-    WWds = np.sqrt(WW_diag)
-    WWds[WWds == 0] = np.float("inf") # Let the inverse of zero entries become zero.
-    WW_diag_invroot = 1. / WWds
-    D_invroot = ss.lil_matrix((n,n))
-    D_invroot.setdiag(WW_diag_invroot)
-    D_invroot = ss.csr_matrix(D_invroot)
-    L = D_invroot.dot(W.dot(D_invroot))
-    if minus_identity:
-        L = -L
-    else:
-        I = scipy.sparse.identity(L.shape[0], format='csr', dtype=L.dtype)
-        L = I - L
-  else:
-    D = ss.lil_matrix((n,n))
-    D.setdiag(WW_diag)
-    D = ss.csr_matrix(D)
-    L = D - W
-    if minus_identity:
-        I = scipy.sparse.identity(L.shape[0], format='csr', dtype=L.dtype)
-        L -= I
 
-  return L.astype(W.dtype)
+def create_laplacian(W, normalize=True, minus_identity=False):
+    n = W.shape[0]
+    W = ss.csr_matrix(W)
+    WW_diag = W.dot(ss.csr_matrix(np.ones((n, 1)))).todense()
+    if normalize:
+        WWds = np.sqrt(WW_diag)
+        WWds[WWds == 0] = np.float("inf")  # Let the inverse of zero entries become zero.
+        WW_diag_invroot = 1. / WWds
+        D_invroot = ss.lil_matrix((n, n))
+        D_invroot.setdiag(WW_diag_invroot)
+        D_invroot = ss.csr_matrix(D_invroot)
+        L = D_invroot.dot(W.dot(D_invroot))
+        if minus_identity:
+            L = -L
+        else:
+            I = scipy.sparse.identity(L.shape[0], format='csr', dtype=L.dtype)
+            L = I - L
+    else:
+        D = ss.lil_matrix((n, n))
+        D.setdiag(WW_diag)
+        D = ss.csr_matrix(D)
+        L = D - W
+        if minus_identity:
+            I = scipy.sparse.identity(L.shape[0], format='csr', dtype=L.dtype)
+            L -= I
+
+    return L.astype(W.dtype)
+
 
 def grid(m, dtype=np.float32):
     """Return the embedding of a grid graph."""
@@ -46,6 +48,7 @@ def grid(m, dtype=np.float32):
     z[:, 1] = yy.reshape(M)
     return z
 
+
 def distance_sklearn_metrics(z, k=4, metric='euclidean'):
     """Compute exact pairwise distances."""
     # Adapted from https://github.com/mdeff/cnn_graph/blob/master/lib/graph.py
@@ -56,6 +59,7 @@ def distance_sklearn_metrics(z, k=4, metric='euclidean'):
     d.sort()
     d = d[:, 1:k+1]
     return d, idx
+
 
 def adjacency(dist, idx):
     """Return the adjacency matrix of a kNN graph."""
@@ -85,6 +89,7 @@ def adjacency(dist, idx):
     assert np.abs(W - W.T).mean() < 1e-10
     assert type(W) is scipy.sparse.csr.csr_matrix
     return W
+
 
 def grid_graph(m):
     # Adapted from https://github.com/mdeff/cnn_graph/blob/master/lib/graph.py

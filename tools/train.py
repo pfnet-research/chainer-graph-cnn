@@ -5,8 +5,6 @@
 import argparse
 import json
 
-import numpy as np
-
 import chainer
 from chainer import optimizers
 from chainer.training import extensions
@@ -15,6 +13,7 @@ from chainer.training.updater import ParallelUpdater
 from lib.datasets import mnist
 from lib.models import graph_cnn
 from lib import graph
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -66,6 +65,7 @@ def main():
     trainer.extend(extensions.ProgressBar())
 
     trainer.run()
+
 
 if __name__ == '__main__':
     main()
