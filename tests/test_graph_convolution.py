@@ -88,7 +88,7 @@ class TestGraphConvolution(unittest.TestCase):
 
     @attr.gpu
     @condition.retry(3)
-    def test_backward_gpu(self):
+    def test_backward_gpu_nobias(self):
         self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.W),
                             None, cuda.to_gpu(self.gy),
                             map(cuda.to_gpu, (self.L.data, self.L.indices, self.L.indptr)))

@@ -42,19 +42,24 @@ if chainer.cuda.available:
             )
 
     def chebyshev_matvec_gpu(C, x, K, n_batch, LmI_data, LmI_indices, LmI_indptr):
-        C[:, 0, :] = x.transpose((0, 2, 1)) # (n_batch, N, c_in)
-        N = C.shape[2]
-        c_in = C.shape[3]
+        # C.shape = (K, N, c_in, n_batch)
+        C[0] = x.transpose((2, 1, 0)) # (N, c_in, n_batch)
+        N = C.shape[1]
         if K > 1:
-            for i in range(n_batch):
-                # C[i, 1] = LmI.dot(C[i, 0])
-                csr_matvec(N, LmI_data, LmI_indices, LmI_indptr, C[i, 0, :], C[i, 1, :])
+                csr_matvec(N, LmI_data, LmI_indices, LmI_indptr, C[0], C[1])
         for k in range(2, K):
-            for i in range(n_batch):
-                # C[i, k] = 2 * LmI.dot(C[i, k-1]) - C[i, k-2]
-                # C[i, k].shape = (N, c_in)
-                csr_matvec(N, LmI_data, LmI_indices, LmI_indptr, C[i, k-1, :], C[i, k, :])
-                C[i, k, :] = 2 * C[i, k, :] - C[i, k-2, :]
+            csr_matvec(N, LmI_data, LmI_indices, LmI_indptr, C[k-1], C[k])
+            C[k] = 2 * C[k] - C[k-2]
+        #if K > 1:
+        #    for i in range(n_batch):
+        #        # C[i, 1] = LmI.dot(C[i, 0])
+        #        csr_matvec(N, LmI_data, LmI_indices, LmI_indptr, C[i, 0, :], C[i, 1, :])
+        #for k in range(2, K):
+        #    for i in range(n_batch):
+        #        # C[i, k] = 2 * LmI.dot(C[i, k-1]) - C[i, k-2]
+        #        # C[i, k].shape = (N, c_in)
+        #        csr_matvec(N, LmI_data, LmI_indices, LmI_indptr, C[i, k-1, :], C[i, k, :])
+        #        C[i, k, :] = 2 * C[i, k, :] - C[i, k-2, :]
 
 class GraphConvolutionFunction(function.Function):
 
@@ -121,12 +126,11 @@ class GraphConvolutionFunction(function.Function):
         K = self.K
         LmI_data, LmI_indices, LmI_indptr = self.LmI_tuple
 
-        C = xp.empty((n_batch, K, N, c_in), dtype=x.dtype)
-        C = xp.asfortranarray(C)
+        C = xp.empty((K, N, c_in, n_batch), dtype=x.dtype)
         chebyshev_matvec_gpu(C, x, K, n_batch, LmI_data, LmI_indices, LmI_indptr)
 
-        # C.shape = (n_batch, K, N, c_in)
-        C = C.transpose((0,3,1,2))
+        # C.shape = (K, N, c_in, n_batch)
+        C = C.transpose((3,2,0,1))
         # C.shape = (n_batch, c_in, K, N)
         self.C = C
         # W.shape = (c_out, c_in, K)
@@ -195,11 +199,11 @@ class GraphConvolutionFunction(function.Function):
         K = self.K
         LmI_data, LmI_indices, LmI_indptr = self.LmI_tuple
 
-        C = xp.empty((n_batch, K, N, c_out), dtype=x.dtype)
+        C = xp.empty((K, N, c_out, n_batch), dtype=x.dtype)
         chebyshev_matvec_gpu(C, gy, K, n_batch, LmI_data, LmI_indices, LmI_indptr)
 
-        # C.shape = (n_batch, K, N, c_out)
-        C = C.transpose((0,3,1,2))
+        # C.shape = (K, N, c_out, n_batch)
+        C = C.transpose((3,2,0,1))
         # C.shape = (n_batch, c_out, K, N)
         # W.shape = (c_out, c_in, K)
 
