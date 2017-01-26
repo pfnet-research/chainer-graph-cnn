@@ -24,13 +24,18 @@ def chebyshev_matvec_cpu(C, x, K, n_batch, LmI):
 
 if chainer.cuda.available:
     # Computes y = Lx
+    # x will be flattened in C-order
+    # y will be flattened in C-order
     csr_matvec = cupy.ElementwiseKernel(
-             'raw T data, raw I indices, raw I indptr, raw T x',
+            'I p, raw T data, raw I indices, raw I indptr, raw T x',
             'T y',
             '''
             y = 0;
-            for(I j = indptr[i]; j < indptr[i+1]; j++) {
-                y += data[j] * x[indices[j]];
+            int n_cols = _ind.size() / p;
+            int row_idx = i / n_cols;
+            int col_idx = i % n_cols;
+            for(I j = indptr[row_idx]; j < indptr[(row_idx+1)]; j++) {
+                y += data[j] * x[indices[j] * n_cols + col_idx];
             }
             ''',
             'csr_matvec'
@@ -38,18 +43,17 @@ if chainer.cuda.available:
 
     def chebyshev_matvec_gpu(C, x, K, n_batch, LmI_data, LmI_indices, LmI_indptr):
         C[:, 0, :] = x.transpose((0, 2, 1)) # (n_batch, N, c_in)
+        N = C.shape[2]
         c_in = C.shape[3]
         if K > 1:
             for i in range(n_batch):
                 # C[i, 1] = LmI.dot(C[i, 0])
-                for j in range(c_in):
-                    csr_matvec(LmI_data, LmI_indices, LmI_indptr, C[i, 0, :, j], C[i, 1, :, j])
+                csr_matvec(N, LmI_data, LmI_indices, LmI_indptr, C[i, 0, :], C[i, 1, :])
         for k in range(2, K):
             for i in range(n_batch):
                 # C[i, k] = 2 * LmI.dot(C[i, k-1]) - C[i, k-2]
                 # C[i, k].shape = (N, c_in)
-                for j in range(c_in):
-                    csr_matvec(LmI_data, LmI_indices, LmI_indptr, C[i, k-1, :, j], C[i, k, :, j])
+                csr_matvec(N, LmI_data, LmI_indices, LmI_indptr, C[i, k-1, :], C[i, k, :])
                 C[i, k, :] = 2 * C[i, k, :] - C[i, k-2, :]
 
 class GraphConvolutionFunction(function.Function):
@@ -238,5 +242,26 @@ if __name__ == '__main__':
     A_indptr = cuda.to_gpu(A.indptr)
     x2 = cuda.to_gpu(x)
     print "x2", x2.dtype
-    csr_matvec(A_data, A_indices, A_indptr, x2, y2)
+    csr_matvec(y.shape[0], A_data, A_indices, A_indptr, x2, y2)
+    print(y2)
+
+    print "--------------------------------"
+    x = np.arange(5*4).reshape((5,4)).astype(np.float32)
+    #x = np.asfortranarray(x)
+    A = scipy.sparse.csr_matrix(np.arange(3*5).reshape((3,5)), dtype=x.dtype)
+    y = A.dot(x)
+    print(y)
+    print "x", x.dtype
+    print "y", y.dtype
+    print "A", A.dtype
+    y2 = cupy.empty((3,4), dtype=x.dtype)
+    #y2 = cupy.asfortranarray(y2)
+    print "y2", y2.dtype
+    A_data = cuda.to_gpu(A.data)
+    A_indices = cuda.to_gpu(A.indices)
+    A_indptr = cuda.to_gpu(A.indptr)
+    x2 = cuda.to_gpu(x)
+    #x2 = cupy.asfortranarray(x2)
+    print "x2", x2.dtype
+    csr_matvec(y.shape[0], A_data, A_indices, A_indptr, x2, y2)
     print(y2)
