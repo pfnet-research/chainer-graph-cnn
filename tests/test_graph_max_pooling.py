@@ -25,15 +25,7 @@ class TestGraphMaxPooling(unittest.TestCase):
     def setUp(self):
         n_batch = 5
         c_in = 3
-        c_out = 2
         N = 4
-        A = np.array([
-            [0, 1, 1, 0],
-            [1, 0, 0, 1],
-            [1, 0, 0, 0],
-            [0, 1, 0, 0],
-                ]).astype(self.dtype)
-        self.L = graph.create_laplacian(A)
         self.K = 25
         self.pooling_inds = np.array([[0, 1], [2, 2], [3, 3]])
         N_coarse = len(self.pooling_inds)

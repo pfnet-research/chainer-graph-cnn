@@ -29,15 +29,11 @@ class GraphConvolution(link.Link):
                  nobias=False, initialW=None, initial_bias=None):
         super(GraphConvolution, self).__init__()
 
-        LmI = graph.create_laplacian(A, no_diag=True)
+        LmI = graph.create_laplacian(A, minus_identity=True)
         print("GraphConvolution: Created LmI with {} nodes".format(LmI.shape[0]))
 
-        self.LmI_data = LmI.data
-        self.LmI_indices = LmI.indices
-        self.LmI_indptr = LmI.indptr
         self.K = K
         self.out_channels = out_channels
-        self.n_verts = LmI.shape[0]
 
         # For backward compatibility
         self.initialW = initialW
@@ -61,6 +57,8 @@ class GraphConvolution(link.Link):
             bias_initializer = initializers._get_initializer(initial_bias)
             self.add_param('b', out_channels, initializer=bias_initializer)
 
+        self.func = graph_convolution.GraphConvolutionFunction(LmI.shape[0], LmI, K)
+
     def _initialize_params(self, in_channels):
         W_shape = (self.out_channels, in_channels, self.K)
         self.add_param('W', W_shape, initializer=self._W_initializer)
@@ -73,5 +71,7 @@ class GraphConvolution(link.Link):
         if self.has_uninitialized_params:
             with cuda.get_device(self._device_id):
                 self._initialize_params(x.shape[1])
-        return graph_convolution.graph_convolution(
-                x, self.W, self.n_verts, self.LmI_data, self.LmI_indices, self.LmI_indptr, self.K, self.b)
+        if self.b is None:
+            return self.func(x, self.W)
+        else:
+            return self.func(x, self.W, self.b)

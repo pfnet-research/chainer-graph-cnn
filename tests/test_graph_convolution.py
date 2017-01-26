@@ -39,7 +39,7 @@ class TestGraphConvolution(unittest.TestCase):
             [1, 0, 0, 0],
             [0, 1, 0, 0],
                 ]).astype(self.x_dtype)
-        self.L = graph.create_laplacian(A, no_diag=True)
+        self.L = graph.create_laplacian(A, minus_identity=True)
         self.K = 25
         self.x = np.random.randn(n_batch, c_in, N).astype(self.x_dtype)
         self.W = np.random.randn(c_out, c_in, self.K).astype(self.W_dtype)
@@ -60,15 +60,12 @@ class TestGraphConvolution(unittest.TestCase):
         x_cpu = chainer.Variable(self.x)
         W_cpu = chainer.Variable(self.W)
         b_cpu = None if nobias else chainer.Variable(self.b)
-        y_cpu = graph_convolution.graph_convolution(x_cpu, W_cpu, n_verts, self.L.data, self.L.indices, self.L.indptr, self.K, b_cpu)
+        y_cpu = graph_convolution.graph_convolution(x_cpu, W_cpu, n_verts, self.L, self.K, b_cpu)
 
         x_gpu = chainer.Variable(cuda.to_gpu(self.x))
         W_gpu = chainer.Variable(cuda.to_gpu(self.W))
         b_gpu = None if nobias else chainer.Variable(cuda.to_gpu(self.b))
-        L_data_gpu = cuda.to_gpu(self.L.data)
-        L_indices_gpu = cuda.to_gpu(self.L.indices)
-        L_indptr_gpu = cuda.to_gpu(self.L.indptr)
-        y_gpu = graph_convolution.graph_convolution(x_gpu, W_gpu, n_verts, L_data_gpu, L_indices_gpu, L_indptr_gpu, self.K, b_gpu)
+        y_gpu = graph_convolution.graph_convolution(x_gpu, W_gpu, n_verts, self.L, self.K, b_gpu)
 
         testing.assert_allclose(
             y_cpu.data, y_gpu.data.get(), **self.check_forward_options)
@@ -77,7 +74,7 @@ class TestGraphConvolution(unittest.TestCase):
     def test_forward_consistency_nobias(self):
         self.test_forward_consistency(nobias=True)
 
-    def check_backward(self, x_data, W_data, b_data, y_grad, (L_data, L_indices, L_indptr)):
+    def check_backward(self, x_data, W_data, b_data, y_grad):
         xp = cuda.get_array_module(x_data)
         if not self.c_contiguous:
             x_data = xp.asfortranarray(x_data)
@@ -92,7 +89,7 @@ class TestGraphConvolution(unittest.TestCase):
                 b_data = b[::2]
                 self.assertFalse(b_data.flags.c_contiguous)
 
-        func = graph_convolution.GraphConvolutionFunction(self.L.shape[0], L_data, L_indices, L_indptr, self.K)
+        func = graph_convolution.GraphConvolutionFunction(self.L.shape[0], self.L, self.K)
 
         args = (x_data, W_data)
         if b_data is not None:
@@ -104,25 +101,23 @@ class TestGraphConvolution(unittest.TestCase):
 
     @condition.retry(3)
     def test_backward_cpu(self):
-        self.check_backward(self.x, self.W, self.b, self.gy, (self.L.data, self.L.indices, self.L.indptr))
+        self.check_backward(self.x, self.W, self.b, self.gy)
 
     @condition.retry(3)
     def test_backward_cpu_nobias(self):
-        self.check_backward(self.x, self.W, None, self.gy, (self.L.data, self.L.indices, self.L.indptr))
+        self.check_backward(self.x, self.W, None, self.gy)
 
     @attr.gpu
     @condition.retry(3)
     def test_backward_gpu(self):
         self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.W),
-                            cuda.to_gpu(self.b), cuda.to_gpu(self.gy),
-                            map(cuda.to_gpu, (self.L.data, self.L.indices, self.L.indptr)))
+                            cuda.to_gpu(self.b), cuda.to_gpu(self.gy))
 
     @attr.gpu
     @condition.retry(3)
     def test_backward_gpu_nobias(self):
         self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.W),
-                            None, cuda.to_gpu(self.gy),
-                            map(cuda.to_gpu, (self.L.data, self.L.indices, self.L.indptr)))
+                            None, cuda.to_gpu(self.gy))
 
 
 testing.run_module(__name__, __file__)

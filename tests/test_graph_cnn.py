@@ -71,8 +71,8 @@ class TestGraphCNN(unittest.TestCase):
         trainer.extend(extensions.ProgressBar())
         trainer.run()
 
-    #def test_train_cpu(self):
-    #    self.check_train(-1)
+    def test_train_cpu(self):
+        self.check_train(-1)
 
     def test_train_gpu(self):
         self.check_train(1)

@@ -68,15 +68,15 @@ class GraphConvolutionFunction(function.Function):
 
     """
 
-    def __init__(self, n_verts, LmI_data, LmI_indices, LmI_indptr, K):
+    def __init__(self, n_verts, LmI, K):
         # NOTE(tommi): It is very important that L
         # is a normalized Graph Laplacian matrix.
         # Otherwise, this will not work.
 
         # It is assumed here that the diagonal entries of L has
         # already been set to zero.
-        self.LmI_tuple = (LmI_data, LmI_indices, LmI_indptr)
-        self.LmI_shape = (n_verts, n_verts)
+        self.LmI = LmI
+        self.LmI_tuple = (LmI.data, LmI.indices, LmI.indptr)
 
         self.K = K
 
@@ -109,14 +109,11 @@ class GraphConvolutionFunction(function.Function):
         b = inputs[2] if len(inputs) == 3 else None
 
         K = self.K
-        LmI_data, LmI_indices, LmI_indptr = self.LmI_tuple
-        if x.dtype != LmI_data.dtype:
-            LmI_data = LmI_data.astype(x.dtype)
-        LmI = scipy.sparse.csr_matrix((LmI_data, LmI_indices, LmI_indptr),
-                                      self.LmI_shape)
+        if x.dtype != self.LmI.dtype:
+            self.LmI = self.LmI.astype(x.dtype)
 
         C = np.empty((n_batch, K, N, c_in), dtype=x.dtype)
-        chebyshev_matvec_cpu(C, x, K, n_batch, LmI)
+        chebyshev_matvec_cpu(C, x, K, n_batch, self.LmI)
 
         # C.shape = (n_batch, K, N, c_in)
         C = C.transpose((0, 3, 1, 2))
@@ -178,13 +175,11 @@ class GraphConvolutionFunction(function.Function):
         # y0.shape = (n_batch, N, c_out)
 
         K = self.K
-        LmI_data, LmI_indices, LmI_indptr = self.LmI_tuple
-        if x.dtype != LmI_data.dtype:
-            LmI_data = LmI_data.astype(x.dtype)
-        LmI = scipy.sparse.csr_matrix((LmI_data, LmI_indices, LmI_indptr), self.LmI_shape)
+        if x.dtype != self.LmI.dtype:
+            self.LmI = self.LmI.astype(x.dtype)
 
         C = np.empty((n_batch, K, N, c_out), dtype=x.dtype)
-        chebyshev_matvec_cpu(C, gy, K, n_batch, LmI)
+        chebyshev_matvec_cpu(C, gy, K, n_batch, self.LmI)
 
         # C.shape = (n_batch, K, N, c_out)
         C = C.transpose((0, 3, 1, 2))
@@ -246,13 +241,13 @@ class GraphConvolutionFunction(function.Function):
             return gx, gW, gb
 
 
-def graph_convolution(x, W, n_verts, L_data, L_indices, L_indptr, K, b=None):
+def graph_convolution(x, W, n_verts, LmI, K, b=None):
     """
     Graph convolution function.
 
     This is an implementation of graph convolution.
     """
-    func = GraphConvolutionFunction(n_verts, L_data, L_indices, L_indptr, K)
+    func = GraphConvolutionFunction(n_verts, LmI, K)
     if b is None:
         return func(x, W)
     else:
