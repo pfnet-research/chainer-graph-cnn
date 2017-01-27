@@ -59,7 +59,7 @@ class TestGraphCNN(unittest.TestCase):
                 ]).astype(np.float32)
         model = graph_cnn.GraphCNN(A, n_out=n_classes)
 
-        optimizer = optimizers.Adam()
+        optimizer = optimizers.Adam(alpha=1e-4)
         optimizer.setup(model)
         train_dataset = EasyDataset(train=True, n_classes=n_classes)
         train_iter = chainer.iterators.MultiprocessIterator(train_dataset, batch_size)

@@ -15,6 +15,16 @@ from lib.models import graph_cnn
 from lib import graph
 
 
+class TestModeEvaluator(extensions.Evaluator):
+
+    def evaluate(self):
+        model = self.get_target('main')
+        model.train = False
+        ret = super(TestModeEvaluator, self).evaluate()
+        model.train = True
+        return ret
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--config', '-c', type=str, required=True, help='Configuration file')
@@ -32,7 +42,7 @@ def main():
     A = graph.grid_graph(28)
     model = graph_cnn.GraphCNN(A)
 
-    optimizer = optimizers.Adam(alpha=1e-3)
+    optimizer = optimizers.Adam(alpha=1e-4)
     optimizer.setup(model)
     if 'optimizer' in config:
         optimizer.add_hook(chainer.optimizer.WeightDecay(config['optimizer']['weight_decay']))
@@ -40,6 +50,7 @@ def main():
     devices = {'main': args.gpus[0]}
     for gid in args.gpus[1:]:
         devices['gpu{}'.format(gid)] = gid
+    config['batch_size'] *= len(args.gpus)
 
     train_dataset = mnist.MNIST(train=True)
     val_dataset = mnist.MNIST(train=False)
@@ -52,7 +63,7 @@ def main():
 
     # Extentions
     trainer.extend(
-        extensions.Evaluator(val_iter, model, device=devices['main']),
+        TestModeEvaluator(val_iter, model, device=devices['main']),
         trigger=(args.val_freq, 'epoch'))
     trainer.extend(
         extensions.snapshot(trigger=(args.snapshot_freq, 'epoch')))
