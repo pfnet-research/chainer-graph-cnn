@@ -1,8 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import numpy as np
-
 import chainer
 import chainer.functions as F
 import chainer.links as L
@@ -15,6 +13,10 @@ from lib import coarsening
 
 
 class GraphCNN(chainer.Chain):
+    """
+    Graph CNN example using the GC32-P4-GC64-P4-FC512 architecture,
+    as in the original paper.
+    """
 
     def __init__(self, A, n_out=10):
         super(GraphCNN, self).__init__()
@@ -33,11 +35,12 @@ class GraphCNN(chainer.Chain):
             self.graph_layers.append((f, p))
 
         self.linear_layers = []
-        sizes = [512, 10]
+        sizes = [512]
         for i, s in enumerate(sizes):
             f = L.Linear(None, s)
             self.add_link('l{}'.format(i), f)
             self.linear_layers.append(f)
+        self.add_link('cls_layer', L.Linear(None, n_out))
 
         self.train = True
 
@@ -56,6 +59,9 @@ class GraphCNN(chainer.Chain):
         # Fully connected layers
         for f in self.linear_layers:
             h = F.relu(F.dropout(f(h), dropout_ratio, train=self.train))
+
+        # Linear classification layer
+        h = self.cls_layer(h)
 
         if args:
             labels = args[0]

@@ -42,7 +42,7 @@ def main():
     A = graph.grid_graph(28)
     model = graph_cnn.GraphCNN(A)
 
-    optimizer = optimizers.Adam(alpha=1e-4)
+    optimizer = optimizers.Adam(alpha=1e-3)
     optimizer.setup(model)
     if 'optimizer' in config:
         optimizer.add_hook(chainer.optimizer.WeightDecay(config['optimizer']['weight_decay']))
