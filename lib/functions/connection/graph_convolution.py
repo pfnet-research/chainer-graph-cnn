@@ -68,15 +68,14 @@ class GraphConvolutionFunction(function.Function):
 
     """
 
-    def __init__(self, n_verts, LmI, K):
+    def __init__(self, n_verts, L, K):
         # NOTE(tommi): It is very important that L
         # is a normalized Graph Laplacian matrix.
         # Otherwise, this will not work.
 
-        # It is assumed here that the diagonal entries of L has
-        # already been set to zero.
-        self.LmI = LmI
-        self.LmI_tuple = (LmI.data, LmI.indices, LmI.indptr)
+        I = scipy.sparse.identity(L.shape[0], format='csr', dtype=L.dtype)
+        self.LmI = L - I
+        self.LmI_tuple = (self.LmI.data, self.LmI.indices, self.LmI.indptr)
 
         self.K = K
 
@@ -241,13 +240,13 @@ class GraphConvolutionFunction(function.Function):
             return gx, gW, gb
 
 
-def graph_convolution(x, W, n_verts, LmI, K, b=None):
+def graph_convolution(x, W, n_verts, L, K, b=None):
     """
     Graph convolution function.
 
     This is an implementation of graph convolution.
     """
-    func = GraphConvolutionFunction(n_verts, LmI, K)
+    func = GraphConvolutionFunction(n_verts, L, K)
     if b is None:
         return func(x, W)
     else:

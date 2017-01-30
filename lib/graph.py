@@ -7,7 +7,7 @@ import scipy.spatial.distance
 import sklearn.metrics.pairwise
 
 
-def create_laplacian(W, normalize=True, minus_identity=False):
+def create_laplacian(W, normalize=True):
     n = W.shape[0]
     W = ss.csr_matrix(W)
     WW_diag = W.dot(ss.csr_matrix(np.ones((n, 1)))).todense()
@@ -18,20 +18,13 @@ def create_laplacian(W, normalize=True, minus_identity=False):
         D_invroot = ss.lil_matrix((n, n))
         D_invroot.setdiag(WW_diag_invroot)
         D_invroot = ss.csr_matrix(D_invroot)
-        L = D_invroot.dot(W.dot(D_invroot))
-        if minus_identity:
-            L = -L
-        else:
-            I = scipy.sparse.identity(L.shape[0], format='csr', dtype=L.dtype)
-            L = I - L
+        I = scipy.sparse.identity(W.shape[0], format='csr', dtype=W.dtype)
+        L = I - D_invroot.dot(W.dot(D_invroot))
     else:
         D = ss.lil_matrix((n, n))
         D.setdiag(WW_diag)
         D = ss.csr_matrix(D)
         L = D - W
-        if minus_identity:
-            I = scipy.sparse.identity(L.shape[0], format='csr', dtype=L.dtype)
-            L -= I
 
     return L.astype(W.dtype)
 

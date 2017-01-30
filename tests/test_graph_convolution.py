@@ -39,7 +39,7 @@ class TestGraphConvolution(unittest.TestCase):
             [1, 0, 0, 0],
             [0, 1, 0, 0],
                 ]).astype(self.x_dtype)
-        self.L = graph.create_laplacian(A, minus_identity=True)
+        self.L = graph.create_laplacian(A)
         self.K = 25
         self.x = np.random.randn(n_batch, c_in, N).astype(self.x_dtype)
         self.W = np.random.randn(c_out, c_in, self.K).astype(self.W_dtype)

@@ -29,8 +29,8 @@ class GraphConvolution(link.Link):
                  nobias=False, initialW=None, initial_bias=None):
         super(GraphConvolution, self).__init__()
 
-        LmI = graph.create_laplacian(A, minus_identity=True)
-        print("GraphConvolution: Created LmI with {} nodes".format(LmI.shape[0]))
+        L = graph.create_laplacian(A)
+        print("GraphConvolution: Created L with {} nodes".format(L.shape[0]))
 
         self.K = K
         self.out_channels = out_channels
@@ -57,7 +57,7 @@ class GraphConvolution(link.Link):
             bias_initializer = initializers._get_initializer(initial_bias)
             self.add_param('b', out_channels, initializer=bias_initializer)
 
-        self.func = graph_convolution.GraphConvolutionFunction(LmI.shape[0], LmI, K)
+        self.func = graph_convolution.GraphConvolutionFunction(L.shape[0], L, K)
 
     def _initialize_params(self, in_channels):
         W_shape = (self.out_channels, in_channels, self.K)
