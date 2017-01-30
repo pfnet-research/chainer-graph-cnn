@@ -101,6 +101,13 @@ class GraphConvolutionFunction(function.Function):
                 b_type.shape[0] == w_type.shape[0],
             )
 
+    def to_cpu(self):
+        self.LmI_tuple = map(cuda.to_cpu, self.LmI_tuple)
+
+    def to_gpu(self, device=None):
+        with cuda.get_device(device):
+            self.LmI_tuple = map(cuda.to_gpu, self.LmI_tuple)
+
     def forward_cpu(self, inputs):
         x, W = inputs[:2]
         # x.shape = (n_batch, c_in, N)
@@ -136,7 +143,7 @@ class GraphConvolutionFunction(function.Function):
         xp = cuda.get_array_module(x)
         with cuda.get_device(x.data):
             K = self.K
-            LmI_data, LmI_indices, LmI_indptr = map(cuda.to_gpu, self.LmI_tuple)
+            LmI_data, LmI_indices, LmI_indptr = self.LmI_tuple
 
             if x.dtype != LmI_data.dtype:
                 LmI_data = LmI_data.astype(x.dtype)
@@ -213,7 +220,7 @@ class GraphConvolutionFunction(function.Function):
             # y0.shape = (n_batch, N, c_out)
 
             K = self.K
-            LmI_data, LmI_indices, LmI_indptr = map(cuda.to_gpu, self.LmI_tuple)
+            LmI_data, LmI_indices, LmI_indptr = self.LmI_tuple
 
             if x.dtype != LmI_data.dtype:
                 LmI_data = LmI_data.astype(x.dtype)

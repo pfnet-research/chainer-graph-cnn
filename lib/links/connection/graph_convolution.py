@@ -59,6 +59,15 @@ class GraphConvolution(link.Link):
 
         self.func = graph_convolution.GraphConvolutionFunction(L.shape[0], L, K)
 
+    def to_cpu(self):
+        super(GraphConvolution, self).to_cpu()
+        self.func.to_cpu()
+
+    def to_gpu(self, device=None):
+        with cuda.get_device(device):
+            super(GraphConvolution, self).to_gpu(device)
+            self.func.to_gpu(device)
+
     def _initialize_params(self, in_channels):
         W_shape = (self.out_channels, in_channels, self.K)
         self.add_param('W', W_shape, initializer=self._W_initializer)
