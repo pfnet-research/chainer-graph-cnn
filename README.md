@@ -68,3 +68,7 @@ epoch       iteration   main/loss   main/accuracy  validation/main/loss  validat
 -- snip --
 100         60000       0.0320832   0.990331       0.0345484             0.9887
 ```
+
+License
+-------
+MIT License. Please see the LICENSE file for details.
