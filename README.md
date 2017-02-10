@@ -1,17 +1,28 @@
-This is a Chainer implementation of 'Convolutional Neural Networks on
-Graphs with Fast Localized Spectral Filtering'
+This is a Chainer implementation of
+'Defferrard et al., "Convolutional Neural Networks on Graphs with Fast Localized Spectral Filtering", NIPS 2016'
 (https://arxiv.org/abs/1606.09375)
-Published in NIPS 2016.
 
-Based on
+Disclaimer: PFN provides no warranty or support for this implementation. Use it at your own risk.
+See license for details.
+
+This implementation was based on
 https://github.com/mdeff/cnn_graph
 
 Usage
 -----
 ```
 # Trains a GraphCNN on MNIST
-$ python tools/train.py -c configs/default.json -o results -e 100 -g 0
+$ python2 tools/train.py -c configs/default.json -o results -e 100 -g 0
 ```
+
+Prerequisites (it may work with others versions, not tested)
+------------------------------------------------------------
+python 2.7.6
+chainer (1.19.0)
+nose (1.3.7)
+numpy (1.11.3)
+scikit-learn (0.18.1)
+scipy (0.18.1)
 
 Results
 -------

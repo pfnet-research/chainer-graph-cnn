@@ -56,11 +56,10 @@ class TestGraphConvolution(unittest.TestCase):
     @attr.gpu
     def test_forward_consistency(self, nobias=False):
 
-        n_verts = self.L.shape[0]
         x_cpu = chainer.Variable(self.x)
         W_cpu = chainer.Variable(self.W)
         b_cpu = None if nobias else chainer.Variable(self.b)
-        func_cpu = graph_convolution.GraphConvolutionFunction(n_verts, self.L, self.K)
+        func_cpu = graph_convolution.GraphConvolutionFunction(self.L, self.K)
         func_cpu.to_cpu()
         args_cpu = (x_cpu, W_cpu)
         if b_cpu is not None:
@@ -70,7 +69,7 @@ class TestGraphConvolution(unittest.TestCase):
         x_gpu = chainer.Variable(cuda.to_gpu(self.x))
         W_gpu = chainer.Variable(cuda.to_gpu(self.W))
         b_gpu = None if nobias else chainer.Variable(cuda.to_gpu(self.b))
-        func_gpu = graph_convolution.GraphConvolutionFunction(n_verts, self.L, self.K)
+        func_gpu = graph_convolution.GraphConvolutionFunction(self.L, self.K)
         func_gpu.to_gpu()
         args_gpu = (x_gpu, W_gpu)
         if b_gpu is not None:
@@ -99,7 +98,7 @@ class TestGraphConvolution(unittest.TestCase):
                 b_data = b[::2]
                 self.assertFalse(b_data.flags.c_contiguous)
 
-        func = graph_convolution.GraphConvolutionFunction(self.L.shape[0], self.L, self.K)
+        func = graph_convolution.GraphConvolutionFunction(self.L, self.K)
         if use_gpu:
             func.to_gpu()
 

@@ -23,8 +23,6 @@ class MNIST(chainer.dataset.DatasetMixin):
 
         if with_gt:
             self.labels = raw['y'].astype(np.int32)
-        print("images:", self.images.shape)
-        print("labels:", self.labels.shape)
 
     def __len__(self):
         return len(self.images)

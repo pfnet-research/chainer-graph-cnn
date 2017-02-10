@@ -8,14 +8,14 @@ from chainer.functions.evaluation import accuracy
 from chainer import reporter
 
 from lib.links.connection.graph_convolution import GraphConvolution
-from lib.functions.pooling.graph_max_pooling import graph_max_pooling
+from lib.functions.pooling.graph_max_pooling import GraphMaxPoolingFunction
 from lib import coarsening
 
 
 class GraphCNN(chainer.Chain):
-    """
-    Graph CNN example using the GC32-P4-GC64-P4-FC512 architecture,
-    as in the original paper.
+    """Graph CNN example implementation.
+
+    Uses the GC32-P4-GC64-P4-FC512 architecture as in the original paper.
     """
 
     def __init__(self, A, n_out=10):
@@ -29,9 +29,10 @@ class GraphCNN(chainer.Chain):
 
         self.graph_layers = []
         sizes = [32, 64]
-        for i, (g, p, s) in enumerate(zip(graphs, pooling_inds, sizes)):
+        for i, (g, inds, s) in enumerate(zip(graphs, pooling_inds, sizes)):
             f = GraphConvolution(None, s, g, K=25)
             self.add_link('gconv{}'.format(i), f)
+            p = GraphMaxPoolingFunction(inds)
             self.graph_layers.append((f, p))
 
         self.linear_layers = []
@@ -52,8 +53,7 @@ class GraphCNN(chainer.Chain):
         h = x
         # Graph convolutional layers
         for f, p in self.graph_layers:
-            h = F.relu(f(h))
-            h = graph_max_pooling(h, p)
+            h = p(F.relu(f(h)))
 
         h = F.reshape(h, (n_batch, -1,))
         # Fully connected layers

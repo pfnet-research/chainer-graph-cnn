@@ -14,7 +14,6 @@ from chainer.testing import attr
 from chainer.testing import condition
 
 from lib.functions.pooling import graph_max_pooling
-from lib import graph
 
 
 @testing.parameterize(*testing.product({

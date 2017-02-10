@@ -44,8 +44,7 @@ if chainer.cuda.available:
 
     def chebyshev_matvec_gpu(C, x, K, n_batch,
                              LmI_data, LmI_indices, LmI_indptr):
-        # C.shape = (K, N, c_in, n_batch)
-        C[0] = x.transpose((2, 1, 0))  # (N, c_in, n_batch)
+        C[0] = x.transpose((2, 1, 0))
         N = C.shape[1]
         if K > 1:
                 csr_matvec(N, LmI_data, LmI_indices, LmI_indptr, C[0], C[1])
@@ -56,19 +55,7 @@ if chainer.cuda.available:
 
 class GraphConvolutionFunction(function.Function):
 
-    """
-    Graph convolutional layer using Chebyshev polynomials
-    in the graph spectral domain.
-
-    This link implements the graph convolution described in
-    the following paper:
-
-    Defferrard et al. "Convolutional Neural Networks on Graphs
-    with Fast Localized Spectral Filtering", NIPS 2016.
-
-    """
-
-    def __init__(self, n_verts, L, K):
+    def __init__(self, L, K):
         # NOTE(tommi): It is very important that L
         # is a normalized Graph Laplacian matrix.
         # Otherwise, this will not work.
@@ -110,7 +97,6 @@ class GraphConvolutionFunction(function.Function):
 
     def forward_cpu(self, inputs):
         x, W = inputs[:2]
-        # x.shape = (n_batch, c_in, N)
         n_batch, c_in, N = x.shape
         b = inputs[2] if len(inputs) == 3 else None
 
@@ -120,15 +106,9 @@ class GraphConvolutionFunction(function.Function):
 
         C = np.empty((n_batch, K, N, c_in), dtype=x.dtype)
         chebyshev_matvec_cpu(C, x, K, n_batch, self.LmI)
-
-        # C.shape = (n_batch, K, N, c_in)
         C = C.transpose((0, 3, 1, 2))
-        # C.shape = (n_batch, c_in, K, N)
         self.C = C
-        # W.shape = (c_out, c_in, K)
-
         y = np.tensordot(C, W, ((1, 2), (1, 2)))
-        # y.shape = (n_batch, N, c_out)
 
         if b is not None:
             y += b
@@ -137,7 +117,6 @@ class GraphConvolutionFunction(function.Function):
 
     def forward_gpu(self, inputs):
         x, W = inputs[:2]
-        # x.shape = (n_batch, c_in, N)
         n_batch, c_in, N = x.shape
         b = inputs[2] if len(inputs) == 3 else None
         xp = cuda.get_array_module(x)
@@ -152,14 +131,9 @@ class GraphConvolutionFunction(function.Function):
             chebyshev_matvec_gpu(C, x, K, n_batch,
                                  LmI_data, LmI_indices, LmI_indptr)
 
-            # C.shape = (K, N, c_in, n_batch)
             C = C.transpose((3, 2, 0, 1))
-            # C.shape = (n_batch, c_in, K, N)
             self.C = C
-            # W.shape = (c_out, c_in, K)
-
             y = xp.tensordot(C, W, ((1, 2), (1, 2)))
-            # y.shape = (n_batch, N, c_out)
 
             if b is not None:
                 y += b
@@ -174,11 +148,7 @@ class GraphConvolutionFunction(function.Function):
         n_batch, c_in, N = x.shape
         c_out = gy.shape[1]
 
-        # gy.shape = (n_batch, c_out, N)
-        # C.shape = (n_batch, c_in, K, N)
         gW = np.tensordot(gy, self.C, ((0, 2), (0, 3))).astype(W.dtype, copy=False)
-        # gW.shape = (c_out, c_in, K)
-        # y0.shape = (n_batch, N, c_out)
 
         K = self.K
         if x.dtype != self.LmI.dtype:
@@ -186,22 +156,14 @@ class GraphConvolutionFunction(function.Function):
 
         C = np.empty((n_batch, K, N, c_out), dtype=x.dtype)
         chebyshev_matvec_cpu(C, gy, K, n_batch, self.LmI)
-
-        # C.shape = (n_batch, K, N, c_out)
         C = C.transpose((0, 3, 1, 2))
-        # C.shape = (n_batch, c_out, K, N)
-        # W.shape = (c_out, c_in, K)
-
         gx = np.tensordot(C, W, ((1, 2), (0, 2)))
-        # gx.shape = (n_batch, N, c_in)
         gx = np.rollaxis(gx, 2, 1)
-        # gx.shape = (n_batch, c_in, N)
 
         if b is None:
             return gx, gW
         else:
             gb = gy.sum(axis=(0, 2))
-            # gb.shape = (c_out,)
             return gx, gW, gb
 
     def backward_gpu(self, inputs, grad_outputs):
@@ -213,11 +175,7 @@ class GraphConvolutionFunction(function.Function):
             n_batch, c_in, N = x.shape
             c_out = gy.shape[1]
 
-            # gy.shape = (n_batch, c_out, N)
-            # C.shape = (n_batch, c_in, K, N)
             gW = xp.tensordot(gy, self.C, ((0, 2), (0, 3))).astype(W.dtype, copy=False)
-            # gW.shape = (c_out, c_in, K)
-            # y0.shape = (n_batch, N, c_out)
 
             K = self.K
             LmI_data, LmI_indices, LmI_indptr = self.LmI_tuple
@@ -228,32 +186,52 @@ class GraphConvolutionFunction(function.Function):
             C = xp.empty((K, N, c_out, n_batch), dtype=x.dtype)
             chebyshev_matvec_gpu(C, gy, K, n_batch,
                                  LmI_data, LmI_indices, LmI_indptr)
-
-            # C.shape = (K, N, c_out, n_batch)
             C = C.transpose((3, 2, 0, 1))
-            # C.shape = (n_batch, c_out, K, N)
-            # W.shape = (c_out, c_in, K)
-
             gx = xp.tensordot(C, W, ((1, 2), (0, 2)))
-            # gx.shape = (n_batch, N, c_in)
             gx = xp.rollaxis(gx, 2, 1)
-            # gx.shape = (n_batch, c_in, N)
 
         if b is None:
             return gx, gW
         else:
             gb = gy.sum(axis=(0, 2))
-            # gb.shape = (c_out,)
             return gx, gW, gb
 
 
-def graph_convolution(x, W, n_verts, L, K, b=None):
-    """
-    Graph convolution function.
+def graph_convolution(x, W, L, K, b=None):
+    """Graph convolution function.
 
-    This is an implementation of graph convolution.
+    Graph convolutional layer using Chebyshev polynomials
+    in the graph spectral domain.
+    This is an implementation the graph convolution described in
+    the following paper:
+
+    Defferrard et al. "Convolutional Neural Networks on Graphs
+    with Fast Localized Spectral Filtering", NIPS 2016.
+
+    Notation:
+    - :math:`n_batch` is the batch size.
+    - :math:`c_I` and :math:`c_O` are the number of the input and output
+      channels, respectively.
+    - :math:`n_vertices` is the number of vertices in the graph.
+
+    Args:
+        x (~chainer.Variable): Input graph signal.
+            Its shape is :math:`(n_batch, c_I, n_vertices)`.
+        W (~chainer.Variable): Weight variable of shape
+            :math:`c_O, c_I, K`.
+        L (scipy.sparse.csr_matrix): Normalized graph Laplacian matrix
+            that describes the graph.
+        K (int): Polynomial order of the Chebyshev approximation.
+        b (~chainer.Variable): Bias variable of length :math:`c_O` (optional)
+
+    Returns:
+        ~chainer.Variable: Output variable.
+
+    If the bias vector is given, it is added to all spatial locations of the
+    output of the graph convolution.
+
     """
-    func = GraphConvolutionFunction(n_verts, L, K)
+    func = GraphConvolutionFunction(L, K)
     if b is None:
         return func(x, W)
     else:
@@ -266,33 +244,33 @@ if __name__ == '__main__':
     A = scipy.sparse.csr_matrix(np.arange(4*5).reshape((4, 5)), dtype=x.dtype)
     y = A.dot(x)
     print(y)
-    print "x", x.dtype
-    print "y", y.dtype
-    print "A", A.dtype
+    print("x", x.dtype)
+    print("y", y.dtype)
+    print("A", A.dtype)
     y2 = cupy.empty((4,), dtype=x.dtype)
-    print "y2", y2.dtype
+    print("y2", y2.dtype)
     A_data = cuda.to_gpu(A.data)
     A_indices = cuda.to_gpu(A.indices)
     A_indptr = cuda.to_gpu(A.indptr)
     x2 = cuda.to_gpu(x)
-    print "x2", x2.dtype
+    print("x2", x2.dtype)
     csr_matvec(y.shape[0], A_data, A_indices, A_indptr, x2, y2)
     print(y2)
 
-    print "--------------------------------"
+    print("--------------------------------")
     x = np.arange(5*4).reshape((5, 4)).astype(np.float32)
     A = scipy.sparse.csr_matrix(np.arange(3*5).reshape((3, 5)), dtype=x.dtype)
     y = A.dot(x)
     print(y)
-    print "x", x.dtype
-    print "y", y.dtype
-    print "A", A.dtype
+    print("x", x.dtype)
+    print("y", y.dtype)
+    print("A", A.dtype)
     y2 = cupy.empty((3, 4), dtype=x.dtype)
-    print "y2", y2.dtype
+    print("y2", y2.dtype)
     A_data = cuda.to_gpu(A.data)
     A_indices = cuda.to_gpu(A.indices)
     A_indptr = cuda.to_gpu(A.indptr)
     x2 = cuda.to_gpu(x)
-    print "x2", x2.dtype
+    print("x2", x2.dtype)
     csr_matvec(y.shape[0], A_data, A_indices, A_indptr, x2, y2)
     print(y2)

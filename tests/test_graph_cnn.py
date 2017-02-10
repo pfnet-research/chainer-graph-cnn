@@ -51,6 +51,8 @@ class TestGraphCNN(unittest.TestCase):
         n_classes = 2
         batch_size = 32
 
+        devices = {'main': gpu}
+
         A = np.array([
             [0, 1, 1, 0],
             [1, 0, 0, 1],
@@ -63,7 +65,6 @@ class TestGraphCNN(unittest.TestCase):
         optimizer.setup(model)
         train_dataset = EasyDataset(train=True, n_classes=n_classes)
         train_iter = chainer.iterators.MultiprocessIterator(train_dataset, batch_size)
-        devices = {'main': gpu}
         updater = ParallelUpdater(train_iter, optimizer, devices=devices)
         trainer = chainer.training.Trainer(updater, (10, 'epoch'), out=outdir)
         trainer.extend(extensions.LogReport(trigger=(1, 'epoch')))
