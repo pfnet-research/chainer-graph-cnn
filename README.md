@@ -1,7 +1,7 @@
 # Chainer Graph CNN
 
 This is a Chainer implementation of
-_Defferrard et al., "Convolutional Neural Networks on Graphs with Fast Localized Spectral Filtering", NIPS 2016_
+_Defferrard et al., "Convolutional Neural Networks on Graphs with Fast Localized Spectral Filtering", NIPS 2016._
 (https://arxiv.org/abs/1606.09375)
 
 Disclaimer: PFN provides no warranty or support for this implementation. Use it at your own risk.
@@ -26,7 +26,7 @@ numpy (1.11.3)
 scikit-learn (0.18.1)
 scipy (0.18.1)
 ```
-It may work with others versions; not tested.
+It may work with other versions; not tested.
 
 Results
 -------
