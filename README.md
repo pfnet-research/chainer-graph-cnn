@@ -7,7 +7,7 @@ _Defferrard et al., "Convolutional Neural Networks on Graphs with Fast Localized
 Disclaimer: PFN provides no warranty or support for this implementation. Use it at your own risk.
 See [license](LICENSE) for details.
 
-This implementation was based on https://github.com/mdeff/cnn_graph .
+This implementation was based on [https://github.com/mdeff/cnn_graph](https://github.com/mdeff/cnn_graph).
 
 Usage
 -----
