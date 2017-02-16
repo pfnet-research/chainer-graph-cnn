@@ -3,6 +3,7 @@
 
 import numpy as np
 import scipy.sparse
+import six
 
 import chainer
 from chainer import cuda
@@ -16,10 +17,10 @@ def chebyshev_matvec_cpu(C, x, K, n_batch, LmI):
     # NOTE(tommi): scipy.sparse does not support sparse tensordot,
     # so have to use a for loop, although inefficient.
     if K > 1:
-        for i in range(n_batch):
+        for i in six.moves.range(n_batch):
             C[i, 1] = LmI.dot(C[i, 0])
-    for k in range(2, K):
-        for i in range(n_batch):
+    for k in six.moves.range(2, K):
+        for i in six.moves.range(n_batch):
             C[i, k] = 2 * LmI.dot(C[i, k-1]) - C[i, k-2]
 
 
@@ -48,7 +49,7 @@ if chainer.cuda.available:
         N = C.shape[1]
         if K > 1:
                 csr_matvec(N, LmI_data, LmI_indices, LmI_indptr, C[0], C[1])
-        for k in range(2, K):
+        for k in six.moves.range(2, K):
             csr_matvec(N, LmI_data, LmI_indices, LmI_indptr, C[k-1], C[k])
             C[k] = 2 * C[k] - C[k-2]
 
