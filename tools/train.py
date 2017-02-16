@@ -6,11 +6,11 @@ import argparse
 import json
 
 import chainer
+from chainer import dataset
 from chainer import optimizers
 from chainer.training import extensions
 from chainer.training.updater import ParallelUpdater
 
-from lib.datasets import mnist
 from lib.models import graph_cnn
 from lib import graph
 
@@ -23,6 +23,11 @@ class TestModeEvaluator(extensions.Evaluator):
         ret = super(TestModeEvaluator, self).evaluate()
         model.train = True
         return ret
+
+
+def concat_and_reshape(batch, device=None, padding=None):
+    x, y = dataset.concat_examples(batch, device, padding)
+    return x.reshape(len(x), 1, 784), y
 
 
 def main():
@@ -52,18 +57,19 @@ def main():
         devices['gpu{}'.format(gid)] = gid
     config['batch_size'] *= len(args.gpus)
 
-    train_dataset = mnist.MNIST(train=True)
-    val_dataset = mnist.MNIST(train=False)
+    train_dataset, val_dataset = chainer.datasets.get_mnist()
 
     train_iter = chainer.iterators.MultiprocessIterator(train_dataset, config['batch_size'])
     val_iter = chainer.iterators.SerialIterator(val_dataset, batch_size=1, repeat=False, shuffle=False)
 
-    updater = ParallelUpdater(train_iter, optimizer, devices=devices)
+    updater = ParallelUpdater(train_iter, optimizer, devices=devices,
+                              converter=concat_and_reshape)
     trainer = chainer.training.Trainer(updater, (args.epoch, 'epoch'), out=args.outdir)
 
     # Extentions
     trainer.extend(
-        TestModeEvaluator(val_iter, model, device=devices['main']),
+        TestModeEvaluator(val_iter, model, device=devices['main'],
+                          converter=concat_and_reshape),
         trigger=(args.val_freq, 'epoch'))
     trainer.extend(
         extensions.snapshot(trigger=(args.snapshot_freq, 'epoch')))
