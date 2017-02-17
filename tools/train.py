@@ -7,6 +7,7 @@ import json
 
 import chainer
 from chainer import dataset
+from chainer import datasets
 from chainer import optimizers
 from chainer.training import extensions
 from chainer.training.updater import ParallelUpdater
@@ -57,7 +58,7 @@ def main():
         devices['gpu{}'.format(gid)] = gid
     config['batch_size'] *= len(args.gpus)
 
-    train_dataset, val_dataset = chainer.datasets.get_mnist()
+    train_dataset, val_dataset = datasets.get_mnist()
 
     train_iter = chainer.iterators.MultiprocessIterator(train_dataset, config['batch_size'])
     val_iter = chainer.iterators.SerialIterator(val_dataset, batch_size=1, repeat=False, shuffle=False)
