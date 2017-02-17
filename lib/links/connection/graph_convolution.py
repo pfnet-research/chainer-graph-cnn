@@ -64,14 +64,10 @@ class GraphConvolution(link.Link):
         self.K = K
         self.out_channels = out_channels
 
-        # For backward compatibility
-        self.initialW = initialW
         self.wscale = wscale
 
-        # For backward compatibility, the scale of weights is proportional to
-        # the square root of wscale.
         self._W_initializer = initializers._get_initializer(
-            initialW, scale=np.sqrt(wscale))
+            initialW, scale=wscale)
 
         if in_channels is None:
             self.add_uninitialized_param('W')
