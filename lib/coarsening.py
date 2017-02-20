@@ -4,6 +4,7 @@ https://github.com/mdeff/cnn_graph/blob/master/lib/coarsening.py
 """
 import numpy as np
 import scipy.sparse
+import six
 
 
 def coarsen(A, levels, self_connections=False):
@@ -38,13 +39,13 @@ def metis(W, levels):
 
     N, N = W.shape
     degree = W.sum(axis=0)  # assume diagonal elements are zero
-    rid = np.random.permutation(range(N))  # The order in which to visit the vertices
+    rid = np.random.permutation(six.moves.range(N))  # The order in which to visit the vertices
     parents = []
     pooling_inds = []
     graphs = []
     graphs.append(W)
 
-    for _ in range(levels):
+    for _ in six.moves.range(levels):
 
         weights = degree            # graclus weights
         weights = np.array(weights).squeeze()
@@ -99,7 +100,7 @@ def metis_one_level(rr, cc, vv, rid,weights):
     count = 0
 
     # calculate the number of elements on each row
-    for ii in range(nnz):
+    for ii in six.moves.range(nnz):
         rowlength[count] = rowlength[count] + 1
         if rr[ii] > oldval:
             oldval = rr[ii]
@@ -107,14 +108,14 @@ def metis_one_level(rr, cc, vv, rid,weights):
             count = count + 1
 
     clustercount = 0
-    for ii in range(N):  # for each vertex
+    for ii in six.moves.range(N):  # for each vertex
         tid = rid[ii]  # in the order given by rid
         if not marked[tid]:
             marked[tid] = True  # mark the vertex so that we don't visit it again
             wmax = 0.0
             rs = rowstart[tid]
             bestneighbor = -1
-            for jj in range(rowlength[tid]):
+            for jj in six.moves.range(rowlength[tid]):
                 nid = cc[rs+jj]  # check each neighbor
                 if marked[nid]:
                     tval = 0.0
@@ -148,7 +149,7 @@ def combine(graphs, pooling_inds, n):
     assert (len(graphs)-1) % n == 0  # graphs[0] contains the original graph, which is always kept
     assert len(pooling_inds) % n == 0
     new_pooling_inds = []
-    for i in range(0, len(pooling_inds), n):
+    for i in six.moves.range(0, len(pooling_inds), n):
         p1, p2 = map(np.array, pooling_inds[i:i+n])
         p = p1[p2].reshape((p2.shape[0], -1))
         new_pooling_inds.append(p)
