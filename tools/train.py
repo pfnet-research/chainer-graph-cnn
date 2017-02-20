@@ -12,8 +12,8 @@ from chainer import optimizers
 from chainer.training import extensions
 from chainer.training.updater import ParallelUpdater
 
-from lib.models import graph_cnn
 from lib import graph
+from lib.models import graph_cnn
 
 
 class TestModeEvaluator(extensions.Evaluator):
@@ -33,13 +33,20 @@ def concat_and_reshape(batch, device=None, padding=None):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--config', '-c', type=str, required=True, help='Configuration file')
-    parser.add_argument('--outdir', '-o', type=str, required=True, help='Output directory')
-    parser.add_argument('--epoch', '-e', type=int, required=True, help='Number of epochs to train for')
-    parser.add_argument('--gpus', '-g', type=int, nargs="*", required=True, help='GPU(s) to use for training')
-    parser.add_argument('--val-freq', type=int, default=1, help='Validation frequency')
-    parser.add_argument('--snapshot-freq', type=int, default=1, help='Snapshot frequency')
-    parser.add_argument('--log-freq', type=int, default=1, help='Log frequency')
+    parser.add_argument('--config', '-c', type=str,
+                        required=True, help='Configuration file')
+    parser.add_argument('--outdir', '-o', type=str,
+                        required=True, help='Output directory')
+    parser.add_argument('--epoch', '-e', type=int,
+                        required=True, help='Number of epochs to train for')
+    parser.add_argument('--gpus', '-g', type=int, nargs="*",
+                        required=True, help='GPU(s) to use for training')
+    parser.add_argument('--val-freq', type=int, default=1,
+                        help='Validation frequency')
+    parser.add_argument('--snapshot-freq', type=int,
+                        default=1, help='Snapshot frequency')
+    parser.add_argument('--log-freq', type=int,
+                        default=1, help='Log frequency')
     args = parser.parse_args()
 
     with open(args.config) as f:
@@ -51,7 +58,8 @@ def main():
     optimizer = optimizers.Adam(alpha=1e-3)
     optimizer.setup(model)
     if 'optimizer' in config:
-        optimizer.add_hook(chainer.optimizer.WeightDecay(config['optimizer']['weight_decay']))
+        optimizer.add_hook(chainer.optimizer.WeightDecay(
+            config['optimizer']['weight_decay']))
 
     devices = {'main': args.gpus[0]}
     for gid in args.gpus[1:]:
@@ -60,12 +68,15 @@ def main():
 
     train_dataset, val_dataset = datasets.get_mnist()
 
-    train_iter = chainer.iterators.MultiprocessIterator(train_dataset, config['batch_size'])
-    val_iter = chainer.iterators.SerialIterator(val_dataset, batch_size=1, repeat=False, shuffle=False)
+    train_iter = chainer.iterators.MultiprocessIterator(
+        train_dataset, config['batch_size'])
+    val_iter = chainer.iterators.SerialIterator(
+        val_dataset, batch_size=1, repeat=False, shuffle=False)
 
     updater = ParallelUpdater(train_iter, optimizer, devices=devices,
                               converter=concat_and_reshape)
-    trainer = chainer.training.Trainer(updater, (args.epoch, 'epoch'), out=args.outdir)
+    trainer = chainer.training.Trainer(
+        updater, (args.epoch, 'epoch'), out=args.outdir)
 
     # Extentions
     trainer.extend(

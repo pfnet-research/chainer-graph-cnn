@@ -8,17 +8,19 @@ import six
 
 
 def coarsen(A, levels, self_connections=False):
-    """
-    Coarsen a graph, represented by its adjacency matrix A, at multiple
+    """Coarsens a graph.
+
+    Coarsens a graph, represented by its adjacency matrix A, at multiple
     levels.
+
     """
+
     graphs, parents, pooling_inds, = metis(A, levels)
     return graphs, pooling_inds
 
 
 def metis(W, levels):
-    """
-    Coarsen a graph multiple times using the METIS algorithm.
+    """Coarsen a graph multiple times using the METIS algorithm.
 
     INPUT
     W: symmetric sparse weight (adjacency) matrix
@@ -32,14 +34,16 @@ def metis(W, levels):
         which indicate the parents in the coarser graph[i+1]
 
     NOTE
-    if "graph" is a list of length k, then "parents" will be a list of length k-1
+    if "graph" is a list of length k, then parents will be a list of length k-1
     """
 
-    # Performs only the coarsening part of Graclus (not the subsequent refinement clustering step)
+    # Performs only the coarsening part of Graclus (not the subsequent
+    # refinement clustering step)
 
     N, N = W.shape
     degree = W.sum(axis=0)  # assume diagonal elements are zero
-    rid = np.random.permutation(six.moves.range(N))  # The order in which to visit the vertices
+    # The order in which to visit the vertices
+    rid = np.random.permutation(six.moves.range(N))
     parents = []
     pooling_inds = []
     graphs = []
@@ -56,7 +60,8 @@ def metis(W, levels):
         rr = idx_row[perm]
         cc = idx_col[perm]
         vv = val[perm]
-        cluster_id, pooling_ind = metis_one_level(rr, cc, vv, rid, weights)  # rr is ordered
+        cluster_id, pooling_ind = metis_one_level(
+            rr, cc, vv, rid, weights)  # rr is ordered
         parents.append(cluster_id)
         pooling_inds.append(pooling_ind)
 
@@ -66,7 +71,8 @@ def metis(W, levels):
         nvv = vv
         Nnew = cluster_id.max() + 1
         # CSR is more appropriate: row,val pairs appear multiple times
-        W = scipy.sparse.csr_matrix((nvv, (nrr, ncc)), shape=(Nnew, Nnew))  # weights of merged vertices are summed here
+        # weights of merged vertices are summed here
+        W = scipy.sparse.csr_matrix((nvv, (nrr, ncc)), shape=(Nnew, Nnew))
         W.eliminate_zeros()
         # Add new graph to the list of all coarsened graphs
         graphs.append(W)
@@ -75,7 +81,8 @@ def metis(W, levels):
         # COMPUTE THE DEGREE
         degree = W.sum(axis=0)
 
-        # For the new graph, visit the vertices in order of smallest degree first
+        # For the new graph, visit the vertices in order of smallest degree
+        # first
         ss = np.array(W.sum(axis=0)).squeeze()
         rid = np.argsort(ss)
 
@@ -83,17 +90,20 @@ def metis(W, levels):
 
 
 # Coarsen a graph given by rr,cc,vv.  rr is assumed to be ordered
-def metis_one_level(rr, cc, vv, rid,weights):
+def metis_one_level(rr, cc, vv, rid, weights):
     # rr,cc,vv are the rows,cols,values corresponding to non-zero entries
-    # weights: weight of each vertex. For the normalized cut case, the weight of each vertex is its degree
+    # weights: weight of each vertex. For the normalized cut case, the weight
+    # of each vertex is its degree
 
     nnz = rr.shape[0]
-    N = rr[nnz-1] + 1
+    N = rr[nnz - 1] + 1
 
     marked = np.zeros(N, np.bool)
     rowstart = np.zeros(N, np.int32)  # the index of the start of each row
-    rowlength = np.zeros(N, np.int32)  # the number of nonzero elements on each row
-    cluster_id = np.zeros(N, np.int32)  # result: The id of each cluster that a vertex belongs to
+    # the number of nonzero elements on each row
+    rowlength = np.zeros(N, np.int32)
+    # result: The id of each cluster that a vertex belongs to
+    cluster_id = np.zeros(N, np.int32)
     pooling_ind = []
 
     oldval = rr[0]
@@ -104,23 +114,27 @@ def metis_one_level(rr, cc, vv, rid,weights):
         rowlength[count] = rowlength[count] + 1
         if rr[ii] > oldval:
             oldval = rr[ii]
-            rowstart[count+1] = ii
+            rowstart[count + 1] = ii
             count = count + 1
 
     clustercount = 0
     for ii in six.moves.range(N):  # for each vertex
         tid = rid[ii]  # in the order given by rid
         if not marked[tid]:
-            marked[tid] = True  # mark the vertex so that we don't visit it again
+            # mark the vertex so that we don't visit it again
+            marked[tid] = True
             wmax = 0.0
             rs = rowstart[tid]
             bestneighbor = -1
             for jj in six.moves.range(rowlength[tid]):
-                nid = cc[rs+jj]  # check each neighbor
+                nid = cc[rs + jj]  # check each neighbor
                 if marked[nid]:
                     tval = 0.0
                 else:
-                    tval = vv[rs+jj] * (1.0/weights[tid] + 1.0/weights[nid])  # the weight between the vertices multiplied by the inverse degrees
+                    # the weight between the vertices multiplied by the inverse
+                    # degrees
+                    tval = vv[rs + jj] * \
+                        (1.0 / weights[tid] + 1.0 / weights[nid])
                 if tval > wmax:
                     wmax = tval
                     bestneighbor = nid
@@ -132,9 +146,12 @@ def metis_one_level(rr, cc, vv, rid,weights):
                 marked[bestneighbor] = True
                 pooling_ind.append((tid, bestneighbor))
             else:
-                pooling_ind.append((tid, tid))  # if singleton vertex, always pool with itself in order to keep the vertex
+                # if singleton vertex, always pool with itself in order to keep
+                # the vertex
+                pooling_ind.append((tid, tid))
 
-            # note that the vertex will not be merged if it had no neighbors (but will belong to a singleton cluster)
+            # note that the vertex will not be merged if it had no neighbors
+            # (but will belong to a singleton cluster)
 
             clustercount += 1
 
@@ -142,15 +159,17 @@ def metis_one_level(rr, cc, vv, rid,weights):
 
 
 def combine(graphs, pooling_inds, n):
-    """
+    """Cobines graphs.
+
     Groups n subsequent graphs and pooling_inds together
     and combines them into one.
     """
-    assert (len(graphs)-1) % n == 0  # graphs[0] contains the original graph, which is always kept
+    # graphs[0] contains the original graph, which is always kept
+    assert (len(graphs) - 1) % n == 0
     assert len(pooling_inds) % n == 0
     new_pooling_inds = []
     for i in six.moves.range(0, len(pooling_inds), n):
-        p1, p2 = map(np.array, pooling_inds[i:i+n])
+        p1, p2 = map(np.array, pooling_inds[i:i + n])
         p = p1[p2].reshape((p2.shape[0], -1))
         new_pooling_inds.append(p)
     return [graphs[0]] + graphs[2::n], new_pooling_inds

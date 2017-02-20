@@ -1,11 +1,9 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import numpy as np
-
-from chainer import link
-from chainer import initializers
 from chainer import cuda
+from chainer import initializers
+from chainer import link
 
 from lib.functions.connection import graph_convolution
 from lib import graph

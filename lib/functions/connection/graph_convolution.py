@@ -7,8 +7,8 @@ import six
 
 import chainer
 from chainer import cuda
-from chainer import function
 from chainer.cuda import cupy
+from chainer import function
 from chainer.utils import type_check
 
 
@@ -21,7 +21,7 @@ def chebyshev_matvec_cpu(C, x, K, n_batch, LmI):
             C[i, 1] = LmI.dot(C[i, 0])
     for k in six.moves.range(2, K):
         for i in six.moves.range(n_batch):
-            C[i, k] = 2 * LmI.dot(C[i, k-1]) - C[i, k-2]
+            C[i, k] = 2 * LmI.dot(C[i, k - 1]) - C[i, k - 2]
 
 
 if chainer.cuda.available:
@@ -29,9 +29,9 @@ if chainer.cuda.available:
     # x will be flattened in C-order
     # y will be flattened in C-order
     csr_matvec = cupy.ElementwiseKernel(
-            'I p, raw T data, raw I indices, raw I indptr, raw T x',
-            'T y',
-            '''
+        'I p, raw T data, raw I indices, raw I indptr, raw T x',
+        'T y',
+        '''
             y = 0;
             int n_cols = _ind.size() / p;
             int row_idx = i / n_cols;
@@ -40,18 +40,18 @@ if chainer.cuda.available:
                 y += data[j] * x[indices[j] * n_cols + col_idx];
             }
             ''',
-            'csr_matvec'
-            )
+        'csr_matvec'
+    )
 
     def chebyshev_matvec_gpu(C, x, K, n_batch,
                              LmI_data, LmI_indices, LmI_indptr):
         C[0] = x.transpose((2, 1, 0))
         N = C.shape[1]
         if K > 1:
-                csr_matvec(N, LmI_data, LmI_indices, LmI_indptr, C[0], C[1])
+            csr_matvec(N, LmI_data, LmI_indices, LmI_indptr, C[0], C[1])
         for k in six.moves.range(2, K):
-            csr_matvec(N, LmI_data, LmI_indices, LmI_indptr, C[k-1], C[k])
-            C[k] = 2 * C[k] - C[k-2]
+            csr_matvec(N, LmI_data, LmI_indices, LmI_indptr, C[k - 1], C[k])
+            C[k] = 2 * C[k] - C[k - 2]
 
 
 class GraphConvolutionFunction(function.Function):
@@ -149,7 +149,8 @@ class GraphConvolutionFunction(function.Function):
         n_batch, c_in, N = x.shape
         c_out = gy.shape[1]
 
-        gW = np.tensordot(gy, self.C, ((0, 2), (0, 3))).astype(W.dtype, copy=False)
+        gW = np.tensordot(gy, self.C, ((0, 2), (0, 3))
+                          ).astype(W.dtype, copy=False)
 
         K = self.K
         if x.dtype != self.LmI.dtype:
@@ -176,7 +177,8 @@ class GraphConvolutionFunction(function.Function):
             n_batch, c_in, N = x.shape
             c_out = gy.shape[1]
 
-            gW = xp.tensordot(gy, self.C, ((0, 2), (0, 3))).astype(W.dtype, copy=False)
+            gW = xp.tensordot(gy, self.C, ((0, 2), (0, 3))
+                              ).astype(W.dtype, copy=False)
 
             K = self.K
             LmI_data, LmI_indices, LmI_indptr = self.LmI_tuple
@@ -242,7 +244,8 @@ def graph_convolution(x, W, L, K, b=None):
 if __name__ == '__main__':
     # for quick testing of csr_matvec
     x = np.random.randn(5)
-    A = scipy.sparse.csr_matrix(np.arange(4*5).reshape((4, 5)), dtype=x.dtype)
+    A = scipy.sparse.csr_matrix(
+        np.arange(4 * 5).reshape((4, 5)), dtype=x.dtype)
     y = A.dot(x)
     print(y)
     print("x", x.dtype)
@@ -259,8 +262,9 @@ if __name__ == '__main__':
     print(y2)
 
     print("--------------------------------")
-    x = np.arange(5*4).reshape((5, 4)).astype(np.float32)
-    A = scipy.sparse.csr_matrix(np.arange(3*5).reshape((3, 5)), dtype=x.dtype)
+    x = np.arange(5 * 4).reshape((5, 4)).astype(np.float32)
+    A = scipy.sparse.csr_matrix(
+        np.arange(3 * 5).reshape((3, 5)), dtype=x.dtype)
     y = A.dot(x)
     print(y)
     print("x", x.dtype)

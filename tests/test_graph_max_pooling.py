@@ -8,8 +8,8 @@ import numpy as np
 
 import chainer
 from chainer import cuda
-from chainer import testing
 from chainer import gradient_check
+from chainer import testing
 from chainer.testing import attr
 from chainer.testing import condition
 
@@ -28,7 +28,8 @@ class TestGraphMaxPooling(unittest.TestCase):
         self.K = 25
         self.pooling_inds = np.array([[0, 1], [2, 2], [3, 3]])
         N_coarse = len(self.pooling_inds)
-        self.x = np.arange(n_batch * c_in * N, dtype=self.dtype).reshape((n_batch, c_in, N))
+        self.x = np.arange(n_batch * c_in * N,
+                           dtype=self.dtype).reshape((n_batch, c_in, N))
         self.gy = np.random.randn(n_batch, c_in, N_coarse).astype(self.dtype)
         self.check_backward_options = {'eps': 2.0 ** -8}
 
@@ -62,9 +63,9 @@ class TestGraphMaxPooling(unittest.TestCase):
 
         args = (x_data,)
         gradient_check.check_backward(
-                func, args, y_grad,
-                **self.check_backward_options
-                )
+            func, args, y_grad,
+            **self.check_backward_options
+        )
 
     @condition.retry(3)
     def test_backward_cpu(self):

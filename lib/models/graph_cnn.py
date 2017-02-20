@@ -3,13 +3,13 @@
 
 import chainer
 import chainer.functions as F
-import chainer.links as L
 from chainer.functions.evaluation import accuracy
+import chainer.links as L
 from chainer import reporter
 
-from lib.links.connection.graph_convolution import GraphConvolution
-from lib.functions.pooling.graph_max_pooling import GraphMaxPoolingFunction
 from lib import coarsening
+from lib.functions.pooling.graph_max_pooling import GraphMaxPoolingFunction
+from lib.links.connection.graph_convolution import GraphConvolution
 
 
 class GraphCNN(chainer.Chain):
@@ -47,7 +47,6 @@ class GraphCNN(chainer.Chain):
 
     def __call__(self, x, *args):
         # x.shape = (n_batch, n_channels, h*w)
-        n_batch = x.shape[0]
         dropout_ratio = 0.5
 
         h = x

@@ -4,17 +4,17 @@
 import numpy as np
 
 import chainer
-from chainer import function
 from chainer import cuda
 from chainer.cuda import cupy
+from chainer import function
 
 if chainer.cuda.available:
     # x will be flattened in C-order
     # y will be flattened in C-order
     gpu_graphpool_fwd = cupy.ElementwiseKernel(
-            'I p, I p_dim, raw I pooling_inds, raw T x',
-            'T y, I max_ind',
-            '''
+        'I p, I p_dim, raw I pooling_inds, raw T x',
+        'T y, I max_ind',
+        '''
             int n_cols = _ind.size() / p;
             int row_idx = i / n_cols;
             int col_idx = i % n_cols;
@@ -25,13 +25,13 @@ if chainer.cuda.available:
             y = max(x0, x1);
             max_ind = x0 > x1 ? idx0 : idx1;
             ''',
-            'gpu_graphpool_fwd'
-            )
+        'gpu_graphpool_fwd'
+    )
 
     gpu_graphpool_bwd = cupy.ElementwiseKernel(
-            'I p, I q, raw I max_inds, raw T gy',
-            'T gx',
-            '''
+        'I p, I q, raw I max_inds, raw T gy',
+        'T gx',
+        '''
             int n_cols = _ind.size() / p;
             int row_idx = i / n_cols;
             int col_idx = i % n_cols;
@@ -46,8 +46,8 @@ if chainer.cuda.available:
             gx = val;
 
             ''',
-            'gpu_graphpool_bwd'
-            )
+        'gpu_graphpool_bwd'
+    )
 
 
 class GraphMaxPoolingFunction(function.Function):
@@ -63,9 +63,9 @@ class GraphMaxPoolingFunction(function.Function):
         m = self.pooling_inds[np.arange(N_coarse), x_pairs.argmax(axis=3)]
         x_inds = np.arange(x.size).reshape(x.shape)
         self.max_inds = x_inds[
-               np.arange(n_batch)[:, None, None],
-               np.arange(c)[None, :, None],
-               m]
+            np.arange(n_batch)[:, None, None],
+            np.arange(c)[None, :, None],
+            m]
         return x_pairs.max(axis=3),
 
     def forward_gpu(self, inputs):
@@ -80,7 +80,8 @@ class GraphMaxPoolingFunction(function.Function):
             y = xp.empty((N_coarse, c, n_batch), dtype=x.dtype)
             self.max_inds = xp.empty((N_coarse, c, n_batch), dtype=np.int32)
             pooling_inds = cuda.to_gpu(self.pooling_inds)
-            gpu_graphpool_fwd(N_coarse, p_dim, pooling_inds, x, y, self.max_inds)
+            gpu_graphpool_fwd(N_coarse, p_dim, pooling_inds,
+                              x, y, self.max_inds)
             y = y.transpose((2, 1, 0))
 
         return y,
@@ -89,7 +90,7 @@ class GraphMaxPoolingFunction(function.Function):
         x = inputs[0]
         n_batch, c_in, N = x.shape
         gy = grad_outputs[0]
-        gx = np.zeros((n_batch*c_in*N), dtype=x.dtype)
+        gx = np.zeros((n_batch * c_in * N), dtype=x.dtype)
         inds = self.max_inds.ravel()
         gx[inds] = gy.ravel()
         gx = gx.reshape(x.shape)
