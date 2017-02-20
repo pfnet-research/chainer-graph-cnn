@@ -89,11 +89,11 @@ class GraphConvolutionFunction(function.Function):
             )
 
     def to_cpu(self):
-        self.LmI_tuple = map(cuda.to_cpu, self.LmI_tuple)
+        self.LmI_tuple = tuple(map(cuda.to_cpu, self.LmI_tuple))
 
     def to_gpu(self, device=None):
         with cuda.get_device(device):
-            self.LmI_tuple = map(cuda.to_gpu, self.LmI_tuple)
+            self.LmI_tuple = tuple(map(cuda.to_gpu, self.LmI_tuple))
 
     def forward_cpu(self, inputs):
         x, W = inputs[:2]
