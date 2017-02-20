@@ -96,8 +96,7 @@ class GraphConvolution(link.Link):
         self.add_param('W', W_shape, initializer=self._W_initializer)
 
     def __call__(self, x):
-        """
-        Applies the graph convolutional layer.
+        """Applies the graph convolutional layer.
 
         Args:
             x: (~chainer.Variable): Input graph signal.

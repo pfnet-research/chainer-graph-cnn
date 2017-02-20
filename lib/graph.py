@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import scipy.sparse as ss
 import numpy as np
+import scipy.sparse as ss
 import scipy.spatial.distance
 import sklearn.metrics.pairwise
 
