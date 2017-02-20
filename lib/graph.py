@@ -13,7 +13,8 @@ def create_laplacian(W, normalize=True):
     WW_diag = W.dot(ss.csr_matrix(np.ones((n, 1)))).todense()
     if normalize:
         WWds = np.sqrt(WW_diag)
-        WWds[WWds == 0] = np.float("inf")  # Let the inverse of zero entries become zero.
+        # Let the inverse of zero entries become zero.
+        WWds[WWds == 0] = np.float("inf")
         WW_diag_invroot = 1. / WWds
         D_invroot = ss.lil_matrix((n, n))
         D_invroot.setdiag(WW_diag_invroot)
@@ -46,11 +47,11 @@ def distance_sklearn_metrics(z, k=4, metric='euclidean'):
     """Compute exact pairwise distances."""
     # Adapted from https://github.com/mdeff/cnn_graph/blob/master/lib/graph.py
     d = sklearn.metrics.pairwise.pairwise_distances(
-            z, metric=metric, n_jobs=-2)
+        z, metric=metric, n_jobs=-2)
     # k-NN graph.
-    idx = np.argsort(d)[:, 1:k+1]
+    idx = np.argsort(d)[:, 1:k + 1]
     d.sort()
-    d = d[:, 1:k+1]
+    d = d[:, 1:k + 1]
     return d, idx
 
 
@@ -67,8 +68,8 @@ def adjacency(dist, idx):
 
     # Weight matrix.
     I = np.arange(0, M).repeat(k)
-    J = idx.reshape(M*k)
-    V = dist.reshape(M*k)
+    J = idx.reshape(M * k)
+    V = dist.reshape(M * k)
     W = scipy.sparse.coo_matrix((V, (I, J)), shape=(M, M))
 
     # No self-connections.
@@ -90,4 +91,3 @@ def grid_graph(m):
     dist, idx = distance_sklearn_metrics(z, k=8)
     A = adjacency(dist, idx)
     return A
-
