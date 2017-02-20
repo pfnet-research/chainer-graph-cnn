@@ -6,8 +6,9 @@ import unittest
 import numpy as np
 
 import chainer
-from chainer import gradient_check
 from chainer import cuda
+from chainer.cuda import cupy
+from chainer import gradient_check
 from chainer import testing
 from chainer.testing import attr
 from chainer.testing import condition
@@ -38,7 +39,7 @@ class TestGraphConvolution(unittest.TestCase):
             [1, 0, 0, 1],
             [1, 0, 0, 0],
             [0, 1, 0, 0],
-                ]).astype(self.x_dtype)
+        ]).astype(self.x_dtype)
         self.L = graph.create_laplacian(A)
         self.K = 25
         self.x = np.random.randn(n_batch, c_in, N).astype(self.x_dtype)
@@ -106,9 +107,9 @@ class TestGraphConvolution(unittest.TestCase):
         if b_data is not None:
             args = args + (b_data,)
         gradient_check.check_backward(
-                func, args, y_grad,
-                **self.check_backward_options
-                )
+            func, args, y_grad,
+            **self.check_backward_options
+        )
 
     @condition.retry(3)
     def test_backward_cpu(self):
@@ -122,13 +123,32 @@ class TestGraphConvolution(unittest.TestCase):
     @condition.retry(3)
     def test_backward_gpu(self):
         self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.W),
-                            cuda.to_gpu(self.b), cuda.to_gpu(self.gy), use_gpu=True)
+                            cuda.to_gpu(self.b), cuda.to_gpu(self.gy),
+                            use_gpu=True)
 
     @attr.gpu
     @condition.retry(3)
     def test_backward_gpu_nobias(self):
         self.check_backward(cuda.to_gpu(self.x), cuda.to_gpu(self.W),
                             None, cuda.to_gpu(self.gy), use_gpu=True)
+
+    @attr.gpu
+    @condition.retry(3)
+    def test_csr_matvec(self):
+        import scipy.sparse
+        x = np.random.randn(5)
+        A = scipy.sparse.csr_matrix(
+            np.arange(4 * 5).reshape((4, 5)), dtype=x.dtype)
+        y = A.dot(x)
+        y_gpu = cupy.empty((4,), dtype=x.dtype)
+        A_data = cuda.to_gpu(A.data)
+        A_indices = cuda.to_gpu(A.indices)
+        A_indptr = cuda.to_gpu(A.indptr)
+        x_gpu = cuda.to_gpu(x)
+        graph_convolution.csr_matvec(y.shape[0], A_data, A_indices, A_indptr,
+                                     x_gpu, y_gpu)
+        testing.assert_allclose(
+            y, cuda.to_cpu(y_gpu), **self.check_forward_options)
 
 
 testing.run_module(__name__, __file__)
