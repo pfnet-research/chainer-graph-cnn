@@ -37,9 +37,9 @@ def main():
     parser.add_argument('--outdir', '-o', type=str, required=True, help='Output directory')
     parser.add_argument('--epoch', '-e', type=int, required=True, help='Number of epochs to train for')
     parser.add_argument('--gpus', '-g', type=int, nargs="*", required=True, help='GPU(s) to use for training')
-    parser.add_argument('--val_freq', type=int, default=1, help='Validation frequency')
-    parser.add_argument('--snapshot_freq', type=int, default=1, help='Snapshot frequency')
-    parser.add_argument('--log_freq', type=int, default=1, help='Log frequency')
+    parser.add_argument('--val-freq', type=int, default=1, help='Validation frequency')
+    parser.add_argument('--snapshot-freq', type=int, default=1, help='Snapshot frequency')
+    parser.add_argument('--log-freq', type=int, default=1, help='Log frequency')
     args = parser.parse_args()
 
     with open(args.config) as f:
