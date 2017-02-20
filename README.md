@@ -19,6 +19,10 @@ $ python tools/train.py -c configs/default.json -o results -e 100 -g 0
 Prerequisites
 -------------
 ```
+pip install -r requirements.txt
+```
+This implementation has been tested with the following versions.
+```
 python 2.7.6
 chainer (1.19.0)
 nose (1.3.7)
