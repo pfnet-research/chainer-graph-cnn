@@ -1,5 +1,5 @@
 chainer
-noise
+nose
 numpy
 scikit-learn
 scipy
