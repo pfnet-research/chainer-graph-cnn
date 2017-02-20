@@ -55,7 +55,6 @@ class GraphCNN(chainer.Chain):
         for f, p in self.graph_layers:
             h = p(F.relu(f(h)))
 
-        h = F.reshape(h, (n_batch, -1,))
         # Fully connected layers
         for f in self.linear_layers:
             h = F.relu(F.dropout(f(h), dropout_ratio, train=self.train))
