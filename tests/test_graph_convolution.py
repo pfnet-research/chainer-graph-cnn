@@ -138,7 +138,7 @@ class TestGraphConvolution(unittest.TestCase):
         import scipy.sparse
         x = np.random.randn(5)
         A = scipy.sparse.csr_matrix(
-            np.arange(4 * 5).reshape((4, 5)), dtype=x.dtype)
+            np.random.randn(4, 5).reshape((4, 5)), dtype=x.dtype)
         y = A.dot(x)
         y_gpu = cupy.empty((4,), dtype=x.dtype)
         A_data = cuda.to_gpu(A.data)
